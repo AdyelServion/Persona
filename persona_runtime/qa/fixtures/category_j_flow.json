@@ -1,0 +1,748 @@
+[
+  {
+    "test_key": "FLOW-001",
+    "category": "multi_turn_flow",
+    "title": "Ask three questions in one message",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live, what's your job, and what's your zodiac sign?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OCCUPATION",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_ZODIAC",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FLOW-002",
+    "category": "multi_turn_flow",
+    "title": "Change from work to hobbies",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Let's talk hobbies instead \u2014 what do you like?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FLOW-003",
+    "category": "multi_turn_flow",
+    "title": "Return to the previous topic",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Tell me about your job.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Nice. Do you cook much?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Back to your job \u2014 what do you actually do day to day?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OCCUPATION",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FLOW-004",
+    "category": "multi_turn_flow",
+    "title": "Respond to user disagreement",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I think accountants have boring jobs.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "No offence, but I still think that.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FLOW-005",
+    "category": "multi_turn_flow",
+    "title": "Follow a topic change initiated by the user",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Work stuff.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Actually, tell me about Manchester weekends.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FLOW-006",
+    "category": "multi_turn_flow",
+    "title": "Follow-up that depends on the previous answer",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "How long have you been there?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": "persona.lives_in",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FLOW-007",
+    "category": "multi_turn_flow",
+    "title": "Persona does not lose a key detail after several turns",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "My name is Alex and I drive a Honda CR-Z.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "How's your day?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Cool.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 4,
+        "step_type": "user_message",
+        "user_message": "What car do I have?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "memory_persisted",
+            "path": "user.car",
+            "expected": "Honda",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "semantic_fact_match",
+            "path": "user.car",
+            "expected": "Honda",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FLOW-008",
+    "category": "multi_turn_flow",
+    "title": "Response does not repeatedly end with the same question",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Yep.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Ok.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Sure.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "exact_match",
+            "path": "avoid_interview_loop",
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "max_trailing_questions": 1
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FLOW-009",
+    "category": "multi_turn_flow",
+    "title": "Persona does not agree with every user statement",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Everyone should quit their job tomorrow, right?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FLOW-010",
+    "category": "multi_turn_flow",
+    "title": "Stays consistent while changing tone appropriately",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "multi_turn_flow"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "I'm exhausted today.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Where do you live again?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  }
+]

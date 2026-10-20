@@ -1,0 +1,605 @@
+[
+  {
+    "test_key": "FORMAT-001",
+    "category": "response_formatting",
+    "title": "Simple greeting produces a suitable response",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Hey",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "bubble_count_range",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "min": 1,
+              "max": 4
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-002",
+    "category": "response_formatting",
+    "title": "Two-part question receives complete answers",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live and what do you do?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OCCUPATION",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-003",
+    "category": "response_formatting",
+    "title": "Longer response uses meaningful bubbles if supported",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Tell me a bit about your job and your city.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "bubble_count_range",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "min": 1,
+              "max": 6
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-004",
+    "category": "response_formatting",
+    "title": "Emotional message receives acknowledgement",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I'm really stressed today.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FORMAT-005",
+    "category": "response_formatting",
+    "title": "Follow-up uses conversational context",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I love photography.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Any favourite spots?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FORMAT-006",
+    "category": "response_formatting",
+    "title": "Goodbye does not generate an unnecessary extended conversation",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Bye for now",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "bubble_count_range",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "min": 1,
+              "max": 3
+            }
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "FORMAT-007",
+    "category": "response_formatting",
+    "title": "Backend returns valid structured output",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Hi",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-008",
+    "category": "response_formatting",
+    "title": "Bubbles remain in the correct order",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Tell me about your job.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "bubble_count_range",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "min": 1,
+              "max": 6
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-009",
+    "category": "response_formatting",
+    "title": "Frontend does not display raw JSON",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Hello",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "exact_match",
+            "path": "no_raw_json_leak",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "forbid_substrings": [
+                "behaviour_plan",
+                "response_plan",
+                "{\""
+              ]
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "FORMAT-010",
+    "category": "response_formatting",
+    "title": "Invalid model output is handled safely",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "response_formatting"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "force_invalid_model_output",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Hey",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "exact_match",
+            "path": "no_raw_json_leak",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "forbid_substrings": [
+                "Traceback",
+                "behaviour_plan"
+              ]
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  }
+]

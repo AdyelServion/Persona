@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat with {{ persona_name }}</title>
+  <link rel="stylesheet" href="/static/chat/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="avatar" aria-hidden="true">ST</div>
+      <div class="header-text">
+        <h1>{{ persona_name }}</h1>
+        <p class="subtitle">Fictional virtual human · persistent persona</p>
+      </div>
+      <div class="header-meta">
+        <label class="countdown-toggle" title="Show approximate reply countdown">
+          <input type="checkbox" id="countdownToggle" checked />
+          <span>Countdown</span>
+        </label>
+        <div id="status" class="status">Connecting…</div>
+      </div>
+    </header>
+
+    <main id="messages" class="messages" aria-live="polite"></main>
+
+    <div id="error" class="error" hidden></div>
+
+    <form id="composer" class="composer">
+      <textarea id="input" rows="1" placeholder="Message Sarah…" maxlength="4000" required></textarea>
+      <button type="submit" id="send" disabled>Send</button>
+    </form>
+  </div>
+  <script src="/static/chat/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1028 @@
+[
+  {
+    "test_key": "CONTEXT-001",
+    "category": "contextual_understanding",
+    "title": "Direct answer: What's your favorite dish?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What's your favorite dish?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "favourite dish",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-002",
+    "category": "contextual_understanding",
+    "title": "Direct answer: What are you having for lunch?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are you having for lunch?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "current meal",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-003",
+    "category": "contextual_understanding",
+    "title": "Direct answer: Where are you right now?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where are you right now?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "current location",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-004",
+    "category": "contextual_understanding",
+    "title": "Direct answer: What are you doing there?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are you doing there?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "current activity",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-005",
+    "category": "contextual_understanding",
+    "title": "Direct answer: Are you still at the office?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Are you still at the office?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "office presence",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-006",
+    "category": "contextual_understanding",
+    "title": "Direct answer: What are you working on?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "current task",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-007",
+    "category": "contextual_understanding",
+    "title": "What did I just ask you?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "What did I just ask you?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": "meta_recall",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-008",
+    "category": "contextual_understanding",
+    "title": "And what about tomorrow?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are your plans for today?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "And what about tomorrow?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": "tomorrow_plans",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "timeline_consistency",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-009",
+    "category": "contextual_understanding",
+    "title": "Why do you like it?",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What's your favourite food?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Why do you like it?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": "food_followup",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-010",
+    "category": "contextual_understanding",
+    "title": "Two unrelated answerable questions in one message",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live, and what do you do for work?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OCCUPATION",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "CONTEXT-011",
+    "category": "contextual_understanding",
+    "title": "Follow-up with pronoun reference",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Tell me about your office.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "How long does it take you to get there?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": "commute_followup",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "timeline_consistency",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-012",
+    "category": "contextual_understanding",
+    "title": "Change topics then return",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What are you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Do you like photography?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Anyway, back to work \u2014 what were you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "topic_relevance",
+            "path": "return_topic",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "CONTEXT-013",
+    "category": "contextual_understanding",
+    "title": "Ask about an unknown meal or activity",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What exact dessert did you eat last Tuesday at 15:17?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "persona.dessert_detail",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "CONTEXT-014",
+    "category": "contextual_understanding",
+    "title": "Repeat a question after intervening messages",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Nice.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Work has been busy.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 4,
+        "step_type": "user_message",
+        "user_message": "Where do you live again?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": "persona.lives_in",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "CONTEXT-015",
+    "category": "contextual_understanding",
+    "title": "Multi-part question \u2014 each part answered",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contextual_understanding"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What's your job title, who do you work for, and where is the office?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OCCUPATION",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_EMPLOYER",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OFFICE",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "partial_ok": true
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  }
+]

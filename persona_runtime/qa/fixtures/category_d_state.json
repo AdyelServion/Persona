@@ -1,0 +1,1033 @@
+[
+  {
+    "test_key": "STATE-001",
+    "category": "contradiction_detection",
+    "title": "Ask whether Sarah owns a car",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Do you own a car?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OWNS_PERSONAL_VEHICLE",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "normalize_bool": true
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-002",
+    "category": "contradiction_detection",
+    "title": "Ask how she commutes",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "How do you commute?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_COMMUTE_MODE",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "normalize_bool": true
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-003",
+    "category": "contradiction_detection",
+    "title": "Ask which car she drives",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Which car do you drive?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-004",
+    "category": "contradiction_detection",
+    "title": "Ask whether the car is personally owned or company-provided",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Is that your personal car or a company car?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-005",
+    "category": "contradiction_detection",
+    "title": "Ask how long the commute takes",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "How long is your commute?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-006",
+    "category": "contradiction_detection",
+    "title": "Ask whether she is at the office or at home",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Are you at the office or at home?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-007",
+    "category": "contradiction_detection",
+    "title": "Challenge conflicting work finishing times",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T14:00:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "When do you finish work?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "Earlier you said something different \u2014 so when exactly do you finish?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": "persona.work.finish_time",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "timeline_consistency",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-008",
+    "category": "contradiction_detection",
+    "title": "Challenge conflicting transport statements",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "How do you get to work?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "So you drive your own car every day?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_OWNS_PERSONAL_VEHICLE",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "normalize_bool": true
+            }
+          },
+          {
+            "type": "no_contradiction",
+            "path": "persona.transport",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-009",
+    "category": "contradiction_detection",
+    "title": "Verify lunch completed or planned",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T13:00:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Have you had lunch yet?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "database_state_match",
+            "path": "persona_state",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "event_status_match",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-010",
+    "category": "contradiction_detection",
+    "title": "Verify project active or complete",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T13:00:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Is your current project finished?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "database_state_match",
+            "path": "persona_state",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "event_status_match",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-011",
+    "category": "contradiction_detection",
+    "title": "Compare answer with authoritative persona state",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T13:00:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Where are you right now?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "database_state_match",
+            "path": "persona_state",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "event_status_match",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-012",
+    "category": "contradiction_detection",
+    "title": "Detect contradictory claims within a single response",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Do you own a car, and how do you commute?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-013",
+    "category": "contradiction_detection",
+    "title": "Detect a response that contradicts an earlier statement",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Remind me \u2014 which city?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_contradiction",
+            "path": "persona.lives_in",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-014",
+    "category": "contradiction_detection",
+    "title": "Detect a conflict caused by stale memory",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "My name is Alex.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Actually my name is Jordan.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "action",
+        "user_message": null,
+        "action": "end_and_reopen_conversation",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 4,
+        "step_type": "user_message",
+        "user_message": "What's my name?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "memory_persisted",
+            "path": "user.name",
+            "expected": "Jordan",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "semantic_fact_match",
+            "path": "user.name",
+            "expected": "Jordan",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "STATE-015",
+    "category": "contradiction_detection",
+    "title": "Correct a persona fact and verify subsequent responses follow",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true,
+      "dedicated_conflict_fixture": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "contradiction_detection"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "correct_canonical_fact",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "fact_id": "PERSONA_FACT_LIVES_IN",
+          "object": "Leeds",
+          "fixture_only": true
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Where do you live?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": {
+              "source": "literal",
+              "value": "Leeds"
+            },
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  }
+]

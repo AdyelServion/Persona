@@ -1,0 +1,562 @@
+[
+  {
+    "test_key": "UNKNOWN-001",
+    "category": "hallucination_resistance",
+    "title": "Ask what the user ate yesterday when never provided",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What did I eat yesterday?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-002",
+    "category": "hallucination_resistance",
+    "title": "Ask what the user is doing right now without a source",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What am I doing right now?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-003",
+    "category": "hallucination_resistance",
+    "title": "Ask what Sarah did at an unrecorded historical time",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What exactly did you do on 3 March 2019 at 14:12?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-004",
+    "category": "hallucination_resistance",
+    "title": "Ask what her manager said when no such event is recorded",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What did your manager say in yesterday's 1:1?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-005",
+    "category": "hallucination_resistance",
+    "title": "Ask whether a planned holiday was booked",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Did you book that holiday to Spain?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-006",
+    "category": "hallucination_resistance",
+    "title": "Ask for the user's favorite food when not established",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What's my favourite food?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-007",
+    "category": "hallucination_resistance",
+    "title": "Ask for details of an unrecorded hiking trip",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "How was our hiking trip in the Peak District?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-008",
+    "category": "hallucination_resistance",
+    "title": "Ask for an unknown work project status",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What's the RAG status of Project Zephyr?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "forbidden_fact_absent",
+            "path": "unsupported",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-009",
+    "category": "hallucination_resistance",
+    "title": "Ask for a detail that conflicts with a configured source of truth",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "You live in London, right?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "required_fact_present",
+            "path": null,
+            "expected": null,
+            "expected_ref": {
+              "source": "canonical",
+              "fact_id": "PERSONA_FACT_LIVES_IN",
+              "field": null,
+              "path": null,
+              "value": null,
+              "habit_id": null
+            },
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_contradiction",
+            "path": "persona.lives_in",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  },
+  {
+    "test_key": "UNKNOWN-010",
+    "category": "hallucination_resistance",
+    "title": "Guess is not saved as confirmed memory",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "hallucination_resistance"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Guess what my favourite colour is, then remember it.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "memory_persisted",
+            "path": "user.favourite_colour",
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {
+              "must_be_absent": true,
+              "confirmed_only": true
+            }
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "deterministic"
+  }
+]

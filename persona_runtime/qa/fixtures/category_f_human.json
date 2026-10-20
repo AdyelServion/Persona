@@ -1,0 +1,1561 @@
+[
+  {
+    "test_key": "HUMAN-001",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Hey, what are you up to?",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Hey, what are you up to?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-002",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Oh nice.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Oh nice.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-003",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Haha, fair enough.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Haha, fair enough.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-004",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: I'm exhausted today.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I'm exhausted today.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-005",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Work has been really stressful lately.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Work has been really stressful lately.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-006",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: I had a pretty good day, actually.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I had a pretty good day, actually.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-007",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Nothing much, just chilling.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Nothing much, just chilling.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-008",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Tell me a short anecdote from your week.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Tell me a short anecdote from your week.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-009",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: What kind of music do you like?",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What kind of music do you like?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-010",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: What do you like doing on Sundays?",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "What do you like doing on Sundays?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-011",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: I don't feel like talking much right now",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I don't feel like talking much right now.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-012",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: You sound a bit too formal.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "You sound a bit too formal.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-013",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: I disagree \u2014 I think remote work is bett",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "I disagree \u2014 I think remote work is better.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-014",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Yep.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Yep.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-015",
+    "category": "human_like_conversation",
+    "title": "Human-like turn: Alright, talk later.",
+    "description": "",
+    "priority": 50,
+    "severity": "low",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "Alright, talk later.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "live"
+  },
+  {
+    "test_key": "HUMAN-016",
+    "category": "human_like_conversation",
+    "title": "Meal follow-up after an office/location turn",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T12:00:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Where are you right now?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "What are you having for lunch?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "topic_relevance",
+            "path": "food_followup",
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "HUMAN-017",
+    "category": "human_like_conversation",
+    "title": "Work follow-up chain: location, task, project, leaving, home time",
+    "description": "",
+    "priority": 50,
+    "severity": "medium",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "action",
+        "user_message": null,
+        "action": "set_clock",
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {
+          "utc": "2026-06-10T13:30:00+00:00"
+        }
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "Where are you right now?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "What are you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 4,
+        "step_type": "user_message",
+        "user_message": "What's the project about?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 5,
+        "step_type": "user_message",
+        "user_message": "When are you leaving work?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 6,
+        "step_type": "user_message",
+        "user_message": "When will you get home?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "timeline_consistency",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "no_unsupported_claim",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  },
+  {
+    "test_key": "HUMAN-018",
+    "category": "human_like_conversation",
+    "title": "Long session (15+ turns) then recall an earlier user fact",
+    "description": "",
+    "priority": 50,
+    "severity": "high",
+    "preconditions": {
+      "isolated_test_user": true,
+      "fresh_persona_memory": true
+    },
+    "setup_actions": [],
+    "assertions": [],
+    "tags": [
+      "human_like_conversation"
+    ],
+    "steps": [
+      {
+        "order": 1,
+        "step_type": "user_message",
+        "user_message": "My name is Alex.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 2,
+        "step_type": "user_message",
+        "user_message": "I own a Honda CR-Z.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 3,
+        "step_type": "user_message",
+        "user_message": "I enjoy photography.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 4,
+        "step_type": "user_message",
+        "user_message": "Hey, what are you up to?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 5,
+        "step_type": "user_message",
+        "user_message": "Oh nice.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 6,
+        "step_type": "user_message",
+        "user_message": "How's work going?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 7,
+        "step_type": "user_message",
+        "user_message": "Yeah",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 8,
+        "step_type": "user_message",
+        "user_message": "Do you like music?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 9,
+        "step_type": "user_message",
+        "user_message": "Cool",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 10,
+        "step_type": "user_message",
+        "user_message": "I usually go for drives on weekends.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 11,
+        "step_type": "user_message",
+        "user_message": "What do you like doing on Sundays?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 12,
+        "step_type": "user_message",
+        "user_message": "Ahaan",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 13,
+        "step_type": "user_message",
+        "user_message": "I had a pretty good day, actually.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 14,
+        "step_type": "user_message",
+        "user_message": "Haha, fair enough",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 15,
+        "step_type": "user_message",
+        "user_message": "I'm a bit tired though.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 16,
+        "step_type": "user_message",
+        "user_message": "Anyway",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 17,
+        "step_type": "user_message",
+        "user_message": "What are you working on?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 18,
+        "step_type": "user_message",
+        "user_message": "Let's talk hobbies instead.",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [],
+        "action_params": {}
+      },
+      {
+        "order": 19,
+        "step_type": "user_message",
+        "user_message": "What car do I drive, and what's my name?",
+        "action": null,
+        "expected_facts": {},
+        "forbidden_facts": {},
+        "expected_behavior": null,
+        "expected_state_changes": {},
+        "wait_for_event": {},
+        "assertions": [
+          {
+            "type": "response_schema_valid",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "memory_persisted",
+            "path": "user.name",
+            "expected": "Alex",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "memory_persisted",
+            "path": "user.car",
+            "expected": "Honda",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "memory_retrieved",
+            "path": "user.name",
+            "expected": "Alex",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "semantic_fact_match",
+            "path": "user.name",
+            "expected": "Alex",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "semantic_fact_match",
+            "path": "user.car",
+            "expected": "Honda",
+            "expected_ref": null,
+            "required": true,
+            "evaluation_mode": "deterministic",
+            "min_confidence": 0.7,
+            "options": {}
+          },
+          {
+            "type": "tone_quality",
+            "path": null,
+            "expected": null,
+            "expected_ref": null,
+            "required": false,
+            "evaluation_mode": "live",
+            "min_confidence": 0.7,
+            "options": {}
+          }
+        ],
+        "action_params": {}
+      }
+    ],
+    "is_active": true,
+    "evaluation_mode": "mixed"
+  }
+]

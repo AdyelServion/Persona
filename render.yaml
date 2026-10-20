@@ -1,0 +1,33 @@
+# Render Blueprint — connect this public GitHub repo in the Render dashboard.
+# Secrets are prompted in the dashboard (sync: false) and must never be committed.
+
+services:
+  - type: web
+    name: persona
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput
+    startCommand: python scripts/start_web.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: FASTAPI_BASE_URL
+        value: http://127.0.0.1:8001
+      - key: FASTAPI_PORT
+        value: "8001"
+      - key: DB_NAME
+        value: Sarah
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: DEFAULT_PERSONA_ID
+        value: sarah_taylor_001
+      - key: DEFAULT_USER_ID
+        value: local-user
+      - key: MONGODB_URI
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
