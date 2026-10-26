@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import random
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -29,6 +29,7 @@ from persona_runtime.logging_utils import get_logger, log_event
 logger = get_logger(__name__)
 
 _COMMUTE_ACTIVITIES = frozenset({"commuting", "travelling"})
+_CATCHUP_LIMIT = 256
 
 
 def _stable_event_id(persona_id: str, local_date: str, activity: str, start_iso: str) -> str:
@@ -161,6 +162,40 @@ class TimelineRepository:
         )
         return result.modified_count == 1
 
+    def postpone_planned_start(
+        self,
+        event_id: str,
+        *,
+        scheduled_start: datetime,
+        now: datetime,
+    ) -> bool:
+        """Push a planned event's start so a commute bridge can sit in front of it."""
+        event = self.get_by_id(event_id)
+        if not event or event.get("status") != "planned":
+            return False
+        new_start = ensure_utc(scheduled_start)
+        old_start = ensure_utc(event["scheduled_start"])
+        old_end = ensure_utc(event["scheduled_end"])
+        if new_start <= old_start:
+            return False
+        new_end = old_end
+        if new_end <= new_start:
+            duration = old_end - old_start
+            if duration <= timedelta(0):
+                duration = timedelta(minutes=30)
+            new_end = new_start + duration
+        result = self.col.update_one(
+            {"event_id": event_id, "status": "planned"},
+            {
+                "$set": {
+                    "scheduled_start": new_start,
+                    "scheduled_end": new_end,
+                    "updated_at": ensure_utc(now),
+                }
+            },
+        )
+        return result.modified_count == 1
+
     def count_for_date(self, persona_id: str, local_date: str) -> int:
         return self.col.count_documents({"persona_id": persona_id, "local_date": local_date})
 
@@ -274,7 +309,7 @@ class TimelineEngine:
         """Walk due events; only this method changes event status."""
         snap = self.clock.snapshot(now=now)
         moment = snap.utc_now
-        self.ensure_day_events(persona_id, now=moment)
+        self._ensure_catchup_span(persona_id, now=moment, today=snap.local_date)
 
         doc = self.state_repo.get_state(persona_id)
         state = dict(doc.get("current_state") or {})
@@ -296,7 +331,7 @@ class TimelineEngine:
         # Catch-up loop: repeatedly activate the earliest due planned event
         # while completing the current active event when a successor is due.
         safety = 0
-        while safety < 64:
+        while safety < _CATCHUP_LIMIT:
             safety += 1
             active = self.timeline_repo.get_active(persona_id)
             open_events = self.timeline_repo.list_planned_and_active(persona_id)
@@ -340,6 +375,8 @@ class TimelineEngine:
                 break
 
             if not transition_allowed(active.get("location"), nxt.get("location")):
+                if self._bridge_with_commute(persona_id, active, nxt, now=moment):
+                    continue
                 log_event(
                     logger,
                     "timeline_transition_blocked",
@@ -395,6 +432,122 @@ class TimelineEngine:
         if not current:
             return True
         return transition_allowed(current, event.get("location"))
+
+    def _ensure_catchup_span(
+        self,
+        persona_id: str,
+        *,
+        now: datetime,
+        today: date,
+    ) -> None:
+        """Materialise each local date from the active event through today.
+
+        A gym row stuck since Friday must still walk Saturday and Sunday
+        instead of jumping straight to this morning.
+        """
+        self.ensure_day_events(persona_id, now=now)
+        active = self.timeline_repo.get_active(persona_id)
+        raw = (active or {}).get("local_date")
+        if not raw:
+            return
+        try:
+            start = date.fromisoformat(str(raw))
+        except ValueError:
+            return
+        if start > today:
+            return
+        day = start
+        while day <= today:
+            self.ensure_day_events(persona_id, now=now, local_date=day.isoformat())
+            day += timedelta(days=1)
+
+    def _bridge_with_commute(
+        self,
+        persona_id: str,
+        active: dict[str, Any],
+        nxt: dict[str, Any],
+        *,
+        now: datetime,
+    ) -> bool:
+        """Insert a planned commute between two events that cannot touch.
+
+        Returns True when the next loop pass can move. A missing open
+        interval gets a one-minute commute and the following event is pushed
+        so scheduled starts stay strictly ordered.
+        """
+        origin = active.get("location")
+        dest = nxt.get("location")
+        if not (
+            transition_allowed(origin, "commute") and transition_allowed("commute", dest)
+        ):
+            return False
+
+        active_start = ensure_utc(active["scheduled_start"])
+        active_end = ensure_utc(active.get("scheduled_end") or active_start)
+        next_start = ensure_utc(nxt["scheduled_start"])
+        if next_start > active_end > active_start:
+            bridge_start = active_end
+            bridge_end = next_start
+        else:
+            bridge_start = (
+                next_start if next_start > active_start else active_start + timedelta(seconds=1)
+            )
+            bridge_end = bridge_start + timedelta(minutes=1)
+        if bridge_end <= bridge_start:
+            bridge_end = bridge_start + timedelta(minutes=1)
+        if bridge_start > ensure_utc(now):
+            return False
+
+        local_date = bridge_start.astimezone(ZoneInfo(self.tz_name)).date().isoformat()
+        events = blocks_to_timeline_events(
+            persona_id=persona_id,
+            blocks=[
+                {
+                    "activity": "commuting",
+                    "location": "commute",
+                    "start_at": bridge_start,
+                    "end_at": bridge_end,
+                }
+            ],
+            local_date=local_date,
+            transport_mode=self.commute_mode,
+            now=now,
+        )
+        for ev in events:
+            ev["source"] = "simulation"
+            ev["detail"] = {"reason": "commute_bridge"}
+        inserted = self.timeline_repo.insert_many_if_absent(events)
+        shifted = False
+        if ensure_utc(nxt["scheduled_start"]) <= bridge_start:
+            shifted = self.timeline_repo.postpone_planned_start(
+                nxt["event_id"],
+                scheduled_start=bridge_end,
+                now=now,
+            )
+        bridge = events[0]
+        existing = self.timeline_repo.get_by_id(bridge["event_id"])
+        refreshed = self.timeline_repo.get_by_id(nxt["event_id"]) or nxt
+        bridge_ready = (
+            existing is not None
+            and existing.get("status") == "planned"
+            and ensure_utc(existing["scheduled_start"])
+            < ensure_utc(refreshed["scheduled_start"])
+        )
+        if not bridge_ready:
+            return False
+        log_event(
+            logger,
+            "timeline_commute_bridge",
+            persona_id=persona_id,
+            from_event=active.get("event_id"),
+            to_event=nxt.get("event_id"),
+            bridge_event=bridge["event_id"],
+            from_loc=origin,
+            to_loc=dest,
+            inserted=inserted,
+            shifted=shifted,
+        )
+        return True
 
     def _close_experiences(
         self, persona_id: str, *, old_activity: str | None, now: datetime

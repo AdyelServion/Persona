@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import pytest
 
-from persona_runtime.db.time_utils import set_clock
+from persona_runtime.db.time_utils import ensure_utc, set_clock
 from persona_runtime.life.simulator import LifeSimulator, build_daily_plan
-from persona_runtime.life.timeline import TimelineEngine, TimelineRepository
+from persona_runtime.life.timeline import (
+    TimelineEngine,
+    TimelineRepository,
+    blocks_to_timeline_events,
+)
 from persona_runtime.life.transitions import transition_allowed
 from persona_runtime.state.repositories import PersonaStateRepository
 
@@ -39,6 +44,10 @@ def test_transition_rules():
     assert transition_allowed("office", "commute")
     assert transition_allowed("commute", "home")
     assert not transition_allowed("office", "home")
+    assert not transition_allowed("gym", "home")
+    assert not transition_allowed("home", "city")
+    assert transition_allowed("gym", "commute")
+    assert transition_allowed("commute", "city")
     assert transition_allowed("home", "home")
     assert transition_allowed("office", "office")
 
@@ -170,3 +179,148 @@ def test_life_simulator_delegates(db):
     doc = life.ensure_life_state(PERSONA)
     assert doc["current_state"]["current_activity"] == "working"
     assert life.timeline_repo.count_for_date(PERSONA, "2026-10-14") > 0
+
+
+LONDON = ZoneInfo("Europe/London")
+
+
+def _london(year: int, month: int, day: int, hour: int, minute: int = 0) -> datetime:
+    return datetime(year, month, day, hour, minute, tzinfo=LONDON).astimezone(timezone.utc)
+
+
+def _gym_weekday() -> tuple[datetime, list[dict]]:
+    """A weekday whose plan actually includes the gym (some days skip it)."""
+    day = datetime(2026, 10, 12, 12, 0, tzinfo=LONDON)
+    for _ in range(10):
+        plan = build_daily_plan(
+            persona_id=PERSONA, local_now=day, tz_name="Europe/London"
+        )
+        if day.weekday() < 5 and any(block["activity"] == "gym" for block in plan):
+            return day, plan
+        day += timedelta(days=1)
+    raise AssertionError("expected a weekday plan that includes the gym")
+
+
+def test_plan_inserts_commute_before_illegal_place_change():
+    _, plan = _gym_weekday()
+    gym_at = next(i for i, block in enumerate(plan) if block["activity"] == "gym")
+    assert plan[gym_at + 1]["activity"] == "commuting"
+    assert plan[gym_at + 1]["location"] == "commute"
+    assert plan[gym_at + 2]["location"] == "home"
+
+    weekend = build_daily_plan(
+        persona_id=PERSONA,
+        local_now=datetime(2026, 10, 17, 12, 0, tzinfo=LONDON),
+        tz_name="Europe/London",
+    )
+    shop_at = next(i for i, block in enumerate(weekend) if block["activity"] == "shopping")
+    assert weekend[shop_at - 1]["activity"] == "commuting"
+    assert weekend[shop_at - 1]["location"] == "commute"
+    for blocks in (plan, weekend):
+        for left, right in zip(blocks, blocks[1:]):
+            assert transition_allowed(left["location"], right["location"])
+            assert ensure_utc(right["start_at"]) > ensure_utc(left["start_at"])
+
+
+def test_evening_is_home_after_gym(engine):
+    eng, _, tl = engine
+    day, _ = _gym_weekday()
+    _set(_london(day.year, day.month, day.day, 20, 0))
+    eng.advance(PERSONA)
+    active = tl.get_active(PERSONA)
+    assert active["activity"] in {"cooking", "eating", "personal_time"}
+    assert active["location"] == "home"
+    completed = tl.list_completed_for_date(PERSONA, day.date().isoformat())
+    gym = next(event for event in completed if event["activity"] == "gym")
+    assert any(
+        event["activity"] == "commuting"
+        and ensure_utc(event["scheduled_start"]) > ensure_utc(gym["scheduled_start"])
+        and ensure_utc(event["scheduled_start"]) < ensure_utc(active["scheduled_start"])
+        for event in completed
+    )
+
+
+def test_next_morning_is_not_the_gym(engine):
+    eng, _, tl = engine
+    day, _ = _gym_weekday()
+    _set(_london(day.year, day.month, day.day, 18, 30))
+    eng.advance(PERSONA)
+    assert tl.get_active(PERSONA)["activity"] == "gym"
+    nxt = day.date() + timedelta(days=1)
+    _set(_london(nxt.year, nxt.month, nxt.day, 9, 0))
+    eng.advance(PERSONA)
+    active = tl.get_active(PERSONA)
+    assert active["activity"] != "gym"
+    assert active["activity"] in {
+        "waking_up",
+        "breakfast",
+        "commuting",
+        "working",
+        "meeting",
+    }
+
+
+def test_stuck_active_gym_catches_up(engine):
+    eng, state_repo, tl = engine
+    local_date = "2026-10-14"
+    gym_start = datetime(2026, 10, 14, 18, 15, tzinfo=LONDON)
+    cook_start = datetime(2026, 10, 14, 19, 30, tzinfo=LONDON)
+    cook_end = datetime(2026, 10, 14, 21, 0, tzinfo=LONDON)
+    events = blocks_to_timeline_events(
+        persona_id=PERSONA,
+        blocks=[
+            {
+                "activity": "gym",
+                "location": "gym",
+                "start_at": gym_start,
+                "end_at": cook_start,
+            },
+            {
+                "activity": "cooking",
+                "location": "home",
+                "start_at": cook_start,
+                "end_at": cook_end,
+            },
+        ],
+        local_date=local_date,
+        now=cook_start,
+    )
+    events[0]["status"] = "active"
+    events[0]["actual_start"] = ensure_utc(gym_start)
+    tl.insert_many_if_absent(events)
+    state_repo.apply_updates(
+        PERSONA,
+        {
+            "current_activity": "gym",
+            "current_location": "gym",
+            "active_event_id": events[0]["event_id"],
+        },
+    )
+    _set(_london(2026, 10, 14, 20, 0))
+    eng.advance(PERSONA)
+    active = tl.get_active(PERSONA)
+    assert active is not None
+    assert active["activity"] != "gym"
+    assert active["location"] == "home"
+    assert tl.get_by_id(events[0]["event_id"])["status"] == "completed"
+    completed = tl.list_completed_for_date(PERSONA, local_date)
+    assert any(event["activity"] == "commuting" for event in completed)
+
+
+def test_weekend_reaches_shopping(engine):
+    eng, _, tl = engine
+    _set(_london(2026, 10, 17, 15, 0))
+    eng.advance(PERSONA)
+    active = tl.get_active(PERSONA)
+    assert active["activity"] in {"shopping", "with_friends"}
+    shopping = next(
+        event
+        for event in tl.list_for_date(PERSONA, "2026-10-17")
+        if event["activity"] == "shopping"
+    )
+    completed = tl.list_completed_for_date(PERSONA, "2026-10-17")
+    assert any(
+        event["activity"] == "commuting"
+        and ensure_utc(event["scheduled_start"]) < ensure_utc(shopping["scheduled_start"])
+        for event in completed
+    )

@@ -19,6 +19,7 @@ from persona_runtime.life.activities import (
     situation_for_activity,
 )
 from persona_runtime.life.experiences import close_open_experiences
+from persona_runtime.life.transitions import transition_allowed
 from persona_runtime.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -108,6 +109,61 @@ _WEEKEND_TEMPLATE: list[tuple[int, int, str]] = [
 ]
 
 
+_COMMUTE_GAP = timedelta(minutes=15)
+
+
+def _insert_required_commutes(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Carve a short commute wherever the next place is not a legal transition.
+
+    Office and the gym still cannot teleport home. The trip is a real block
+    so the timeline can leave and arrive on time.
+    """
+    if len(blocks) < 2:
+        return blocks
+    planned: list[dict[str, Any]] = [blocks[0]]
+    travel = get_activity("commuting")
+    for nxt in blocks[1:]:
+        prev = planned[-1]
+        origin = prev.get("location")
+        dest = nxt.get("location")
+        if transition_allowed(origin, dest) or not (
+            transition_allowed(origin, "commute") and transition_allowed("commute", dest)
+        ):
+            planned.append(nxt)
+            continue
+
+        block_start = ensure_utc(prev["start_at"])
+        block_end = ensure_utc(prev["end_at"])
+        span = block_end - block_start
+        carve = _COMMUTE_GAP
+        if span <= carve + timedelta(minutes=1):
+            carve = span / 2 if span > timedelta(minutes=2) else timedelta(minutes=1)
+        commute_start = block_end - carve
+        if commute_start <= block_start:
+            commute_start = block_start + timedelta(seconds=1)
+        commute_end = block_end
+        if commute_end <= commute_start:
+            commute_end = commute_start + timedelta(minutes=1)
+        prev["end_at"] = commute_start
+        if ensure_utc(nxt["start_at"]) <= commute_start:
+            nxt["start_at"] = commute_end
+            if ensure_utc(nxt["end_at"]) <= commute_end:
+                params = get_activity(nxt["activity"])
+                nxt["end_at"] = commute_end + timedelta(
+                    minutes=params.typical_duration_minutes
+                )
+        planned.append(
+            {
+                "activity": "commuting",
+                "location": travel.location,
+                "start_at": commute_start,
+                "end_at": commute_end,
+            }
+        )
+        planned.append(nxt)
+    return planned
+
+
 def _stable_rng(persona_id: str, date_str: str) -> random.Random:
     seed = int(hashlib.sha256(f"{persona_id}:{date_str}".encode()).hexdigest()[:16], 16)
     return random.Random(seed)
@@ -180,7 +236,7 @@ def build_daily_plan(
                     minutes=params.typical_duration_minutes
                 )
 
-    return blocks
+    return _insert_required_commutes(blocks)
 
 
 def block_for_time(plan: list[dict[str, Any]], now: datetime) -> dict[str, Any] | None:

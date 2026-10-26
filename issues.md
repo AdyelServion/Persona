@@ -374,3 +374,30 @@ No previously failing tests were recorded as newly passing in this run.
 - Pass rate (non-blocked): 98.2% (109/111 non-blocked)
 - Configuration: `{'category': None, 'test_key': None, 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': False}`
 - Report: `qa_reports/75d3aa2a-0d8f-4c68-8d18-91779f15ba15.json`
+
+<!-- run:d330bbe0-c12d-4982-aa66-7093078b826e -->
+### Run `d330bbe0-c12d-4982-aa66-7093078b826e` — 2026-10-26T06:47:22.954000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 1 / 0 / 0 / 0 (total 1)
+- Pass rate (non-blocked): 100.0% (1/1 non-blocked)
+- Configuration: `{'category': None, 'test_key': 'PROFILE-003', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/d330bbe0-c12d-4982-aa66-7093078b826e.json`
+
+<!-- run:75a4d26d-cdb2-4619-8fd9-8430e402c193 -->
+### Run `75a4d26d-cdb2-4619-8fd9-8430e402c193` — 2026-10-26T06:47:34.494000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'FORMAT-001', 'failed_from': None, 'dry_run': True, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/75a4d26d-cdb2-4619-8fd9-8430e402c193.json`
+
+<!-- run:8481c8f4-d90a-4335-826b-05cc5711842f -->
+### Run `8481c8f4-d90a-4335-826b-05cc5711842f` — 2026-10-26T06:47:37.494000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 1 / 0 / 0 / 0 (total 1)
+- Pass rate (non-blocked): 100.0% (1/1 non-blocked)
+- Configuration: `{'category': None, 'test_key': 'FORMAT-007', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/8481c8f4-d90a-4335-826b-05cc5711842f.json`
