@@ -43,6 +43,41 @@ class ResponseWorker:
         )
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._last_proactive_scan = None
+        self._planner = None
+
+    @property
+    def planner(self):
+        if self._planner is None:
+            from persona_runtime.outbound.planner import ProactivePlanner
+
+            self._planner = ProactivePlanner(runtime=self.runtime, settings=self.settings)
+        return self._planner
+
+    def maybe_scan_proactive(self, now) -> int:
+        """Run the proactive scan at most every PROACTIVE_SCAN_MINUTES."""
+        if not getattr(self.settings, "proactive_outbound_enabled", False):
+            return 0
+        interval = timedelta(minutes=float(getattr(self.settings, "proactive_scan_minutes", 15)))
+        if self._last_proactive_scan is not None and now - self._last_proactive_scan < interval:
+            return 0
+        self._last_proactive_scan = now
+        outcomes = self.planner.scan(now=now)
+        return sum(1 for o in outcomes if o.get("scheduled"))
+
+    def _process_proactive(self, job: dict[str, Any]) -> None:
+        outcome = self.planner.execute(job)
+        if outcome.get("sent"):
+            self.job_repo.complete(job["job_id"], job["lock_token"], strategy="PROACTIVE")
+        else:
+            self.job_repo.fail(job["job_id"], job["lock_token"], f"suppressed:{outcome.get('reason')}")
+        log_event(
+            logger,
+            "proactive_job_processed",
+            job_id=job["job_id"],
+            sent=bool(outcome.get("sent")),
+            reason=outcome.get("reason"),
+        )
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -74,6 +109,10 @@ class ResponseWorker:
             self.life.advance_if_needed(self.settings.default_persona_id, now=now)
         except Exception as exc:  # noqa: BLE001
             logger.warning("life_advance_failed: %s", exc)
+        try:
+            self.maybe_scan_proactive(now)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("proactive_scan_failed: %s", exc)
 
         job = self.job_repo.claim_due(self.worker_id, now=now)
         if not job:
@@ -87,6 +126,9 @@ class ResponseWorker:
             return 0
 
     def _process_job(self, job: dict[str, Any]) -> None:
+        if job.get("event_type") == "proactive":
+            self._process_proactive(job)
+            return
         now = utcnow()
         persona_id = job["persona_id"]
         conversation_id = job["conversation_id"]
@@ -193,17 +235,31 @@ class ResponseWorker:
                     message_ids.append(mid)
             messages = self.conversation_repo.get_messages_by_ids(message_ids)
 
-        strategy_plan = choose_response_strategy(
-            messages=messages,
-            activity_key=activity,
-            availability=availability,
-            strategy_hint=job.get("strategy"),
-        )
+        # A new chat has no user messages yet. Still send Sarah's opener —
+        # do not treat that as "wait for a message", and do not wait out sleep or busy.
+        is_opening = event_type == "conversation_start" and not messages
+        if is_opening:
+            strategy_plan = {
+                "strategy": "OPENING",
+                "include_ids": [],
+                "superseded_ids": [],
+                "ignored_ids": [],
+                "reason": "conversation_opening",
+                "busy_ack": False,
+            }
+        else:
+            strategy_plan = choose_response_strategy(
+                messages=messages,
+                activity_key=activity,
+                availability=availability,
+                strategy_hint=job.get("strategy"),
+            )
 
         attempts = int(job.get("attempt_count") or 0)
         force_reply = attempts >= MAX_DEFER_ATTEMPTS and not sleeping
         if (
-            strategy_plan["strategy"] == "DEFER_RESPONSE"
+            not is_opening
+            and strategy_plan["strategy"] == "DEFER_RESPONSE"
             and not strategy_plan.get("busy_ack")
             and not force_reply
         ):
@@ -296,7 +352,10 @@ class ResponseWorker:
         )
 
         if not result.get("assistant_message_id") and event_type != "message_seen":
-            fallback = (result.get("generated_response") or "").strip() or "Yeah, fair enough."
+            if event_type == "conversation_start":
+                fallback = (result.get("generated_response") or "").strip() or "Hey, how are you?"
+            else:
+                fallback = (result.get("generated_response") or "").strip() or "Yeah, fair enough."
             saved = self.conversation_repo.add_message(
                 conversation_id=conversation_id,
                 sender="assistant",
@@ -307,6 +366,17 @@ class ResponseWorker:
                 },
             )
             result = {**result, "assistant_message_id": saved["message_id"]}
+            if event_type == "conversation_start":
+                ctx_repo = getattr(self.runtime, "conversation_context_repo", None)
+                if ctx_repo is not None:
+                    existing = ctx_repo.get(conversation_id) or {}
+                    if not existing.get("onboarding_step"):
+                        ctx_repo.apply_turn_update(
+                            conversation_id=conversation_id,
+                            persona_id=persona_id,
+                            user_id=user_id,
+                            updates={"onboarding_step": "how_are_you"},
+                        )
             log_event(
                 logger,
                 "response_fallback_persisted",
@@ -338,13 +408,10 @@ class ResponseWorker:
             memory_count=len(result.get("stored_memories") or []),
         )
 
-        # If busy ack, schedule follow-up full response after activity ends
+        # If busy ack, schedule a short follow-up with the full reply — a quick
+        # human glance later, never waiting for the activity to end.
         if strategy_plan.get("busy_ack") or strategy_plan["strategy"] == "ACKNOWLEDGE_LATEST":
-            # Reload end from state after generation
-            state_doc = self.state_repo.get_state(persona_id)
-            current = dict(state_doc.get("current_state") or {})
-            end_at = current.get("activity_expected_end_at") or end_at
-            follow_end = ensure_utc(end_at) if end_at else (now + timedelta(minutes=30))
+            follow_end = ensure_utc(now) + timedelta(seconds=max(30.0, 60.0 * self.settings.life_time_scale))
             for mid in include_ids:
                 m = self.conversation_repo.get_message(mid)
                 if m and m.get("status") == "answered" and strategy_plan.get("busy_ack"):
@@ -424,6 +491,11 @@ class ResponseWorker:
 
     def _recover_failed_job(self, job: dict[str, Any], error: str) -> None:
         """Retry a crashed job, or fail it and leave a visible fallback bubble."""
+        if job.get("event_type") == "proactive":
+            # Never retry or apologise for an outbound the user didn't ask for
+            if job.get("lock_token"):
+                self.job_repo.fail(job["job_id"], job["lock_token"], f"proactive_error:{error}"[:200])
+            return
         include_ids = list(job.get("message_ids") or [])
         if include_ids:
             self.conversation_repo.update_messages(

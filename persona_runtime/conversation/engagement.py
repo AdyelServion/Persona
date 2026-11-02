@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
+import re
 from typing import Any, Literal
 
+from persona_runtime.conversation.topics import detect_declined_topic
 from persona_runtime.graph.social_moves import ConversationalMove
 
 Strategy = Literal[
@@ -91,6 +94,244 @@ def _is_emotional_difficult(understanding: dict[str, Any], text: str) -> bool:
 
 def _style_wants_short(style: dict[str, Any]) -> bool:
     return (style or {}).get("response_length") == "short"
+
+
+# Asked one per reply after Sarah's "how are you?" opener. Not the full discovery catalogue.
+_ONBOARDING_AFTER = (
+    (
+        "lives_in",
+        ("lives_in", "location", "user.location"),
+        "location",
+        "acknowledge what they just said, then ask where they live",
+    ),
+    (
+        "occupation",
+        ("occupation", "user.occupation"),
+        "everyday",
+        "react to their answer, then ask what they do day to day (work or study)",
+    ),
+    (
+        "hobby",
+        ("hobby", "interest", "user.hobby", "user.interest"),
+        "hobbies",
+        "react briefly, then ask what they enjoy doing in their free time",
+    ),
+)
+_ONBOARDING_ORDER = ("how_are_you", "lives_in", "occupation", "hobby")
+_ONBOARDING_PAUSE = {"direct_answer", "empathize", "natural_close", "respectful_disagree"}
+_ROBOTIC_OPENER = re.compile(r"\byou mentioned\b|\bstill into\b", re.I)
+
+# Tone examples for a first chat. The model writes its own line; these are not a script.
+_OPENER_EXAMPLES: dict[str, tuple[str, ...]] = {
+    "first_time": (
+        "Hey! How's your day going so far?",
+        "Hey there! What's keeping you busy today?",
+        "Hii! Glad we finally got to chat. How are you?",
+        "So, tell me something interesting about yourself!",
+        "Hey! Are you having a productive day or one of those lazy ones?",
+        "Random question: are you more of an indoor person or someone who loves going out?",
+        "What's something you genuinely enjoy doing when you have free time?",
+        "Hey! What's been the best part of your week so far?",
+        "Let's start with something interesting. What's one thing you're really passionate about?",
+        "Hey! What do you usually get up to when you're not working?",
+    ),
+    "hobbies": (
+        "So, what do you usually do for fun?",
+        "Are you into photography, gaming, sports, or something completely different?",
+        "What's a hobby you could spend hours doing without getting bored?",
+        "Do you enjoy trying new things, or do you prefer sticking to your usual interests?",
+        "What's something you've always wanted to learn?",
+        "What's one interest people might not guess about you?",
+        "Have you picked up any new hobbies recently?",
+    ),
+    "lifestyle": (
+        "Are you a morning person or a night owl?",
+        "What does a normal weekend look like for you?",
+        "Do you prefer going out with friends or having a quiet evening at home?",
+        "What's your ideal way to spend a free Sunday?",
+        "Do you enjoy spontaneous plans, or do you like everything organized?",
+        "What's usually the first thing you do when you get home after work?",
+        "Coffee, tea, or neither?",
+    ),
+    "work": (
+        "What do you do when you're not busy exploring this app?",
+        "Do you actually enjoy your work, or is it more of a means to an end?",
+        "What does a typical working day look like for you?",
+        "How did you end up in your current field?",
+        "What's the most interesting part of your job?",
+        "What do you usually do to unwind after a particularly busy day?",
+    ),
+    "travel": (
+        "Are you someone who loves travelling?",
+        "What's the best place you've ever visited?",
+        "If you could travel anywhere next month, where would you go?",
+        "More into relaxing beach holidays or adventurous mountain trips?",
+        "Do you prefer travelling with friends or exploring somewhere on your own?",
+        "What's one destination on your bucket list?",
+        "Have you ever taken a completely unplanned trip?",
+    ),
+    "entertainment": (
+        "What kind of music has been on repeat for you lately?",
+        "What's the last really good movie you watched?",
+        "Are you into series?",
+        "Do you prefer comedy, thrillers, or something more emotional?",
+        "What's an artist you could listen to all day?",
+        "Are you a cinema person or more of a movie-at-home person?",
+        "What's a show you think everyone should watch at least once?",
+    ),
+}
+_CATEGORY_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("travel", ("travel", "travelling", "traveling", "trip", "holiday", "beach", "mountain", "adventure")),
+    ("entertainment", ("music", "movie", "movies", "film", "series", "cinema", "song")),
+    ("work", ("career", "job", "work")),
+    ("lifestyle", ("weekend", "coffee", "tea", "morning", "night owl", "going out", "sunday")),
+    ("hobbies", ("photography", "gaming", "game", "sport", "programming", "coding", "reading", "cooking", "hobby")),
+)
+
+
+def _stable_index(user_id: str, count: int, salt: str) -> int:
+    if count <= 1:
+        return 0
+    digest = hashlib.sha256(f"{user_id}:{salt}".encode()).hexdigest()
+    return int(digest[:8], 16) % count
+
+
+def _clean_interests(interests: list[str] | None) -> list[str]:
+    cleaned: list[str] = []
+    seen: set[str] = set()
+    for raw in interests or []:
+        text = " ".join(str(raw or "").split())
+        key = text.lower()
+        if text and key not in seen:
+            seen.add(key)
+            cleaned.append(text)
+    return cleaned
+
+
+def _category_for_interest(interest: str) -> str:
+    low = interest.lower()
+    for category, keys in _CATEGORY_KEYS:
+        for key in keys:
+            if " " in key:
+                if key in low:
+                    return category
+            elif re.search(rf"\b{re.escape(key)}\b", low):
+                return category
+    return "hobbies"
+
+
+def opener_style(name: str | None, interests: list[str] | None) -> dict[str, Any]:
+    """Pick example questions that match signup interests. Examples are tone, not a script."""
+    first = " ".join(str(name or "").split()).split(" ")[0] if str(name or "").strip() else ""
+    cleaned = _clean_interests(interests)
+    if not cleaned:
+        categories = ["first_time"]
+    else:
+        categories = []
+        for interest in cleaned:
+            category = _category_for_interest(interest)
+            if category not in categories:
+                categories.append(category)
+    examples: list[str] = []
+    for category in categories:
+        examples.extend(_OPENER_EXAMPLES[category])
+    return {
+        "first_name": first,
+        "interests": cleaned,
+        "categories": categories,
+        "examples": examples,
+    }
+
+
+def is_robotic_opener(text: str) -> bool:
+    return bool(_ROBOTIC_OPENER.search(text or ""))
+
+
+def fallback_opener(style: dict[str, Any], user_id: str | None) -> list[str]:
+    """One human example from the matched group when generation fails or sounds scripted."""
+    examples = list(style.get("examples") or _OPENER_EXAMPLES["first_time"])
+    return [examples[_stable_index(str(user_id or ""), len(examples), "fallback")]]
+
+
+def signup_from_state(state: dict[str, Any]) -> tuple[str, list[str]]:
+    """Display name and interests collected when this chat was created."""
+    ctx = state.get("user_context") or {}
+    profile = ctx.get("profile") if isinstance(ctx.get("profile"), dict) else {}
+    name = str(ctx.get("display_name") or profile.get("display_name") or "").strip()
+    raw = profile.get("interests") or []
+    interests = [" ".join(str(item).split()) for item in raw if str(item).strip()]
+    if not interests:
+        sources = list(state.get("social_context") or []) + list(ctx.get("authorized_context") or [])
+        for item in sources:
+            if isinstance(item, dict) and item.get("kind") == "self_declared_interest" and item.get("value"):
+                interests.append(" ".join(str(item["value"]).split()))
+    return name, interests
+
+
+def known_onboarding_keys(
+    conversation_context: dict[str, Any] | None,
+    profile_card: list[dict[str, Any]] | None = None,
+) -> set[str]:
+    known: set[str] = set()
+    conv = conversation_context or {}
+    for fact in conv.get("user_facts_this_conversation") or []:
+        if not isinstance(fact, dict):
+            continue
+        for field in ("predicate", "memory_key"):
+            if fact.get(field):
+                known.add(str(fact[field]).lower())
+    for card in profile_card or []:
+        if not isinstance(card, dict):
+            continue
+        for field in ("predicate", "memory_key"):
+            if card.get(field):
+                known.add(str(card[field]).lower())
+    if conv.get("signup_interests"):
+        # The opener already used a signup interest, so don't ask "what do you enjoy" next.
+        known.update({"hobby", "interest", "user.hobby", "user.interest"})
+    return known
+
+
+def onboarding_followup(
+    conversation_context: dict[str, Any] | None,
+    *,
+    known_keys: set[str] | None = None,
+    declined_topics: list[str] | None = None,
+    speech_act: str = "",
+    strategy: str = "",
+    incoming_message: str = "",
+) -> dict[str, Any] | None:
+    """Next getting-to-know-you question, or a finish marker. None if this chat is not onboarding."""
+    conv = conversation_context or {}
+    current = conv.get("onboarding_step")
+    if current in (None, "", "done"):
+        return None
+    if speech_act == "conversation_closing" or detect_declined_topic(incoming_message, str(current)):
+        return {"onboarding_step": "done", "onboarding_active": False, "finish_only": True}
+    if strategy in _ONBOARDING_PAUSE:
+        return None
+    try:
+        asked_idx = _ONBOARDING_ORDER.index(str(current))
+    except ValueError:
+        return {"onboarding_step": "done", "onboarding_active": False, "finish_only": True}
+
+    known = {k.lower() for k in (known_keys or set()) if k}
+    declined = [str(d).lower() for d in (declined_topics or []) if d]
+    for step, keys, topic, hint in _ONBOARDING_AFTER:
+        if _ONBOARDING_ORDER.index(step) <= asked_idx:
+            continue
+        if any(k.lower() in known for k in keys):
+            continue
+        if any(topic == d or topic in d or d in topic for d in declined):
+            continue
+        return {
+            "onboarding_step": step,
+            "onboarding_active": True,
+            "followup_hint": hint,
+            "topic": topic,
+            "strategy": "answer_plus_followup",
+        }
+    return {"onboarding_step": "done", "onboarding_active": False, "finish_only": True}
 
 
 def _topic_declined(topic: str, declined: list[str]) -> bool:
@@ -287,12 +528,41 @@ def select_strategy(
         "having_lunch",
         "having_dinner",
         "cooking",
+        "working",
+        "meeting",
+        "deep_work",
+        "gym",
+        "with_friends",
+        "family_call",
     }:
         allow_life_aside = True
 
     if ask_streak >= 2:
         allow_ask = False
         notes.append("ask_streak_block")
+
+    onboarding_fields: dict[str, Any] = {}
+    obo = onboarding_followup(
+        conv,
+        known_keys=known_onboarding_keys(conv),
+        declined_topics=declined,
+        speech_act=speech,
+        strategy=strategy,
+        incoming_message=incoming_message,
+    )
+    if obo and obo.get("onboarding_active"):
+        strategy = "answer_plus_followup"
+        allow_ask = True
+        followup_hint = str(obo["followup_hint"])
+        topic_hint = str(obo["topic"])
+        notes.append(f"onboarding:{obo['onboarding_step']}")
+        onboarding_fields = {
+            "onboarding_step": obo["onboarding_step"],
+            "onboarding_active": True,
+        }
+    elif obo and obo.get("finish_only"):
+        notes.append("onboarding:done")
+        onboarding_fields = {"onboarding_step": "done", "onboarding_active": False}
 
     allowed_moves = list(STRATEGY_TO_MOVES.get(strategy, ["REACT", "ACKNOWLEDGE"]))
     if not allow_ask:
@@ -367,6 +637,7 @@ def select_strategy(
             tone=tone,
             topic=topic_hint,
         ),
+        **onboarding_fields,
     }
 
 
@@ -398,6 +669,75 @@ def _memory_followup_hook(
                 return "wish them luck or ask a light question about the upcoming event"
             return "reference this memory naturally if evidence allows; do not invent details"
     return ""
+
+
+def stamp_onboarding_brief(
+    brief: dict[str, Any],
+    conversation_context: dict[str, Any] | None,
+    *,
+    known_keys: set[str] | None = None,
+    declined_topics: list[str] | None = None,
+    speech_act: str = "",
+    incoming_message: str = "",
+) -> dict[str, Any]:
+    """Re-apply onboarding once profile facts are known. Active onboarding wins over other initiative."""
+    obo = onboarding_followup(
+        conversation_context,
+        known_keys=known_keys,
+        declined_topics=declined_topics,
+        speech_act=speech_act,
+        strategy=str((brief or {}).get("strategy") or ""),
+        incoming_message=incoming_message,
+    )
+    if brief.get("onboarding_step") == "done" and not brief.get("onboarding_active"):
+        return brief
+    if not obo:
+        return brief
+    eng = dict(brief)
+    if obo.get("finish_only"):
+        eng["onboarding_step"] = "done"
+        eng["onboarding_active"] = False
+        if brief.get("onboarding_active"):
+            eng["should_ask_question"] = False
+            eng["followup_hint"] = ""
+            eng["strategy"] = "simple_response"
+            eng["conversational_move"] = "REACT"
+            eng["instruction"] = _brief_instruction(
+                strategy="simple_response",
+                should_ask=False,
+                followup_hint="",
+                allow_life_aside=bool(brief.get("allow_life_aside")),
+                tone=str(brief.get("tone") or "casual"),
+                topic=str(brief.get("topic") or ""),
+            )
+        return eng
+    hint = str(obo["followup_hint"])
+    topic = str(obo["topic"])
+    eng.update(
+        {
+            "strategy": "answer_plus_followup",
+            "allowed_strategies": ["answer_plus_followup"],
+            "should_ask_question": True,
+            "conversational_move": "ASK",
+            "allowed_moves": ["ASK", "REACT", "SHARE"],
+            "followup_hint": hint,
+            "topic": topic,
+            "onboarding_step": obo["onboarding_step"],
+            "onboarding_active": True,
+        }
+    )
+    notes = [n for n in str(eng.get("notes") or "").split(";") if n and not n.startswith("onboarding:")]
+    notes.append(f"onboarding:{obo['onboarding_step']}")
+    eng["notes"] = ";".join(notes)
+    eng["instruction"] = _brief_instruction(
+        strategy="answer_plus_followup",
+        should_ask=True,
+        followup_hint=hint,
+        allow_life_aside=False,
+        tone=str(brief.get("tone") or "casual"),
+        topic=topic,
+    )
+    return eng
 
 
 def _brief_instruction(

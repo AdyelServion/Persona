@@ -11,6 +11,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
+# Used only when INTERNAL_API_TOKEN is unset (local dev). Both processes read the same .env.
+DEV_INTERNAL_TOKEN = "dev-internal-token-change-me"
+
 
 class Settings(BaseSettings):
     """Required runtime settings. Missing values fail loudly at startup."""
@@ -51,6 +54,27 @@ class Settings(BaseSettings):
     proactive_outbound_enabled: bool = Field(False, alias="PROACTIVE_OUTBOUND_ENABLED")
     proactive_min_interval_hours: float = Field(12.0, alias="PROACTIVE_MIN_INTERVAL_HOURS")
     proactive_max_per_day: int = Field(1, alias="PROACTIVE_MAX_PER_DAY")
+    proactive_max_per_week: int = Field(3, alias="PROACTIVE_MAX_PER_WEEK")
+    proactive_min_gap_hours: float = Field(20.0, alias="PROACTIVE_MIN_GAP_HOURS")
+    proactive_quiet_start: str = Field("22:00", alias="PROACTIVE_QUIET_START")
+    proactive_quiet_end: str = Field("08:00", alias="PROACTIVE_QUIET_END")
+    proactive_scan_minutes: float = Field(15.0, alias="PROACTIVE_SCAN_MINUTES")
+    proactive_max_bubbles: int = Field(3, alias="PROACTIVE_MAX_BUBBLES")
+    proactive_job_ttl_hours: float = Field(6.0, alias="PROACTIVE_JOB_TTL_HOURS")
+    proactive_delivery: str = Field("in_app", alias="PROACTIVE_DELIVERY")
+    # Turns Sarah keeps leading after the user answers an outbound/opening message
+    sarah_led_turns: int = Field(4, alias="SARAH_LED_TURNS")
+
+    # Simulated reply timing for normal replies (life simulator). Proactive never delays.
+    realistic_reply_delays: bool = Field(True, alias="REALISTIC_REPLY_DELAYS")
+
+    # Shared secret between the Django proxy and FastAPI. FastAPI rejects calls without it.
+    internal_api_token: str = Field("", alias="INTERNAL_API_TOKEN")
+    max_users_per_browser: int = Field(25, alias="MAX_USERS_PER_BROWSER")
+
+    @property
+    def effective_internal_token(self) -> str:
+        return self.internal_api_token or DEV_INTERNAL_TOKEN
 
     @property
     def openai_model_name(self) -> str:

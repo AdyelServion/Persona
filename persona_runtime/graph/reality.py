@@ -634,9 +634,9 @@ def _fallback_fragment(target: str, snap: dict[str, Any]) -> str:
         if loc_type == "home":
             return "Yeah, I'm at home today."
         place = location or "work"
-        return f"Nope 😂 I'm at work today. I'm in the finance office in Manchester." if "office" in (
+        return "nah im at work today. im in the finance office in Manchester" if "office" in (
             location or ""
-        ).lower() or loc_type == "office" else f"Nope — I'm at {place} right now."
+        ).lower() or loc_type == "office" else f"nah, im at {place} right now"
 
     if target == "current_task":
         label = project or task
@@ -690,8 +690,8 @@ def _fallback_fragment(target: str, snap: dict[str, Any]) -> str:
     if target == "follow_up":
         if task:
             return (
-                f"Haha, it definitely has its moments 😂 "
-                f"But I actually don't mind it when the {task} finally lines up."
+                f"haha it definitely has its moments. "
+                f"i dont mind it when the {task} finally lines up"
             )
         if situation:
             return f"Haha, yeah — {situation} isn't always thrilling, but it is what it is."

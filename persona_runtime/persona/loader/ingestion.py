@@ -8,6 +8,8 @@ from uuid import uuid4
 
 from pymongo.database import Database
 
+from persona_runtime.capability.seed import SARAH_CAPABILITY_PROFILE
+from persona_runtime.conversation.typing_style import SARAH_TYPING_STYLE
 from persona_runtime.db.time_utils import utcnow
 from persona_runtime.logging_utils import get_logger, log_event
 from persona_runtime.memory.repositories import MemoryRepository
@@ -104,6 +106,13 @@ class PersonaIngestionService:
                     updated_at=utcnow(),
                 )
             )
+
+        self.persona_repo.upsert_capability_profile(
+            self.persona_id, SARAH_CAPABILITY_PROFILE, overwrite=False
+        )
+        self.persona_repo.upsert_typing_style(
+            self.persona_id, SARAH_TYPING_STYLE, overwrite=False
+        )
 
         life_events = extract_timeline_events(biography_text) if biography_text else []
         existing_life = self.memory_repo.get_active(

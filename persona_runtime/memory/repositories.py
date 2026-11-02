@@ -70,11 +70,11 @@ class MemoryRepository:
         col = self.collection_for(memory_type)
         q: dict[str, Any] = {"persona_id": persona_id, "status": "active"}
         if user_id is not None:
+            # This user's own memories, plus persona canon that belongs to no user.
+            # A persona-scoped doc carrying some other user_id is never returned.
             q["$or"] = [
-                {"scope": "persona"},
-                {"scope": "user", "user_id": user_id},
                 {"user_id": user_id},
-                {"user_id": None, "scope": "persona"},
+                {"user_id": None, "scope": {"$in": ["persona", "relationship"]}},
             ]
         if other_person_id is not None:
             q["other_person_id"] = other_person_id
@@ -105,10 +105,19 @@ class MemoryRepository:
         return self.collection_for("semantic").find_one(q)
 
     def supersede_semantic(self, old_memory_id: str, new_doc: dict[str, Any]) -> dict[str, Any]:
-        self.update_memory("semantic", old_memory_id, {"status": "superseded"})
         history = new_doc.setdefault("history", [])
         history.append({"superseded_memory_id": old_memory_id, "at": utcnow().isoformat()})
-        return self.create_memory("semantic", new_doc)
+        created = self.create_memory("semantic", new_doc)
+        self.update_memory(
+            "semantic",
+            old_memory_id,
+            {
+                "status": "superseded",
+                "superseded_by": created["memory_id"],
+                "valid_until": utcnow(),
+            },
+        )
+        return created
 
     def list_all_active_for_user(self, persona_id: str, user_id: str) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []

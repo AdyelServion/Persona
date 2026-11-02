@@ -46,8 +46,17 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
+
+# Lightweight identities live in a signed (tamper-proof) cookie — no DB migrations.
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 180
+SESSION_SERIALIZER = "django.contrib.sessions.serializers.JSONSerializer"
 
 ROOT_URLCONF = "web.urls"
 
@@ -90,6 +99,11 @@ WHITENOISE_USE_FINDERS = DEBUG
 FASTAPI_BASE_URL = os.environ.get("FASTAPI_BASE_URL", "http://127.0.0.1:8001")
 DEFAULT_PERSONA_ID = os.environ.get("DEFAULT_PERSONA_ID", "sarah_taylor_001")
 DEFAULT_USER_ID = os.environ.get("DEFAULT_USER_ID", "local-user")
+# Must match FastAPI. Falls back to the same dev constant as persona_runtime.config.
+INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN") or "dev-internal-token-change-me"
+if not DEBUG and INTERNAL_API_TOKEN == "dev-internal-token-change-me":
+    raise RuntimeError("INTERNAL_API_TOKEN is required when DEBUG is False")
+MAX_USERS_PER_BROWSER = int(os.environ.get("MAX_USERS_PER_BROWSER", "25"))
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 if not DEBUG:

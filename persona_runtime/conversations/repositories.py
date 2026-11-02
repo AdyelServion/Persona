@@ -21,17 +21,32 @@ class ConversationRepository:
 
     def get_or_create(self, persona_id: str, user_id: str) -> dict[str, Any]:
         existing = self.conversations.find_one(
-            {"persona_id": persona_id, "user_id": user_id, "status": "active"}
+            {"persona_id": persona_id, "user_id": user_id, "status": "active"},
+            sort=[("created_at", 1)],
         )
         if existing:
             return existing
+        return self.create(persona_id, user_id)
+
+    def create(
+        self,
+        persona_id: str,
+        user_id: str,
+        *,
+        title: str | None = None,
+        conversation_type: str = "primary",
+    ) -> dict[str, Any]:
         now = utcnow()
         doc = {
             "conversation_id": str(uuid4()),
             "persona_id": persona_id,
             "user_id": user_id,
+            "title": title or "Chat with Sarah",
+            "conversation_type": conversation_type,
             "status": "active",
             "next_sequence": 0,
+            "last_read_sequence": 0,
+            "last_message_at": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -41,6 +56,59 @@ class ConversationRepository:
     def get(self, conversation_id: str) -> dict[str, Any] | None:
         return self.conversations.find_one({"conversation_id": conversation_id})
 
+    def get_owned(self, conversation_id: str, user_id: str) -> dict[str, Any] | None:
+        """Return the conversation only when it belongs to user_id."""
+        if not conversation_id or not user_id:
+            return None
+        return self.conversations.find_one({"conversation_id": conversation_id, "user_id": user_id})
+
+    def list_for_user(self, user_id: str, persona_id: str | None = None) -> list[dict[str, Any]]:
+        q: dict[str, Any] = {"user_id": user_id, "status": {"$ne": "deleted"}}
+        if persona_id:
+            q["persona_id"] = persona_id
+        docs = list(self.conversations.find(q))
+        docs.sort(
+            key=lambda d: (d.get("last_message_at") or d.get("created_at") or utcnow()),
+            reverse=True,
+        )
+        return docs
+
+    def mark_read(self, conversation_id: str, user_id: str, sequence: int | None = None) -> int:
+        conv = self.get_owned(conversation_id, user_id)
+        if not conv:
+            return 0
+        if sequence is None:
+            sequence = int(conv.get("next_sequence") or 0)
+        sequence = min(int(sequence), int(conv.get("next_sequence") or 0))
+        if sequence > int(conv.get("last_read_sequence") or 0):
+            self.conversations.update_one(
+                {"conversation_id": conversation_id, "user_id": user_id},
+                {"$set": {"last_read_sequence": sequence}},
+            )
+            now = utcnow()
+            self.messages.update_many(
+                {
+                    "conversation_id": conversation_id,
+                    "sender": "assistant",
+                    "sequence": {"$lte": sequence},
+                    "read_at": None,
+                },
+                {"$set": {"read_at": now, "delivery_status": "read"}},
+            )
+        return sequence
+
+    def unread_count(self, conv: dict[str, Any]) -> int:
+        return self.messages.count_documents(
+            {
+                "conversation_id": conv["conversation_id"],
+                "sender": "assistant",
+                "sequence": {"$gt": int(conv.get("last_read_sequence") or 0)},
+            }
+        )
+
+    def last_message(self, conversation_id: str) -> dict[str, Any] | None:
+        return self.messages.find_one({"conversation_id": conversation_id}, sort=[("sequence", -1)])
+
     def touch(self, conversation_id: str) -> None:
         self.conversations.update_one(
             {"conversation_id": conversation_id},
@@ -48,14 +116,18 @@ class ConversationRepository:
         )
 
     def next_sequence(self, conversation_id: str) -> int:
+        return int(self._advance(conversation_id).get("next_sequence") or 1)
+
+    def _advance(self, conversation_id: str) -> dict[str, Any]:
+        now = utcnow()
         result = self.conversations.find_one_and_update(
             {"conversation_id": conversation_id},
-            {"$inc": {"next_sequence": 1}, "$set": {"updated_at": utcnow()}},
+            {"$inc": {"next_sequence": 1}, "$set": {"updated_at": now, "last_message_at": now}},
             return_document=ReturnDocument.AFTER,
         )
         if not result:
             raise ValueError(f"Conversation not found: {conversation_id}")
-        return int(result.get("next_sequence") or 1)
+        return result
 
     def add_message(
         self,
@@ -67,9 +139,14 @@ class ConversationRepository:
         status: str | None = None,
         priority: str | None = None,
         response_job_id: str | None = None,
+        message_type: str | None = None,
+        proactive_type: str | None = None,
+        outbound_id: str | None = None,
     ) -> dict[str, Any]:
         now = utcnow()
-        sequence = self.next_sequence(conversation_id)
+        conv = self._advance(conversation_id)
+        sequence = int(conv.get("next_sequence") or 1)
+        owner_id = conv.get("user_id")
         if sender == "user":
             msg_status = status or "received"
             msg_priority = priority or classify_priority(content)
@@ -80,7 +157,13 @@ class ConversationRepository:
         doc = {
             "message_id": str(uuid4()),
             "conversation_id": conversation_id,
+            "user_id": owner_id,
             "sender": sender,
+            "sender_id": owner_id if sender == "user" else conv.get("persona_id"),
+            "message_type": message_type or ("user" if sender == "user" else "reply"),
+            "proactive_type": proactive_type,
+            "outbound_id": outbound_id,
+            "delivery_status": "delivered",
             "content": content,
             "timestamp": now,
             "created_at": now,
@@ -93,7 +176,6 @@ class ConversationRepository:
             "metadata": metadata or {},
         }
         self.messages.insert_one(doc)
-        self.touch(conversation_id)
         return doc
 
     def update_message(self, message_id: str, updates: dict[str, Any]) -> None:

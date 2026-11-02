@@ -5,6 +5,12 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from persona_runtime.capability.validator import (
+    capability_fallback_reply,
+    occupation_claim_failure,
+    validate_capability,
+)
+from persona_runtime.graph.bubbles import contains_emoji
 from persona_runtime.graph.evidence import reply_has_recall_language
 from persona_runtime.graph.fact_tracker import (
     detect_facts_in_text,
@@ -137,9 +143,13 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
                 elif pred == "university" and bad.lower() in lower:
                     failures.append(f"contradicts_canonical:{pred}={canonical_obj}_not_{bad}")
 
-    job_m = JOB_CLAIMS.search(reply)
-    if job_m:
-        failures.append(f"contradicts_canonical:occupation!=Management Accountant ({job_m.group(1)})")
+    job_fail = occupation_claim_failure(state, reply)
+    if job_fail:
+        failures.append(job_fail)
+    elif JOB_CLAIMS.search(reply) and not (state.get("capability_profile") or {}):
+        job_m = JOB_CLAIMS.search(reply)
+        if job_m:
+            failures.append(f"contradicts_canonical:occupation!=Management Accountant ({job_m.group(1)})")
 
     # 2. Repeated disclosed facts
     mentioned = detect_facts_in_text(reply)
@@ -270,6 +280,21 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
         qs = detect_questions_in_text(reply)
         if qs or re.search(r"\?\s*$", reply.strip()):
             failures.append("unnecessary_question")
+
+    # 13b. Extrovert layer limits: one question per reply, no generic bounce-backs,
+    # no guilt/pressure lines (proactive or not)
+    personality = state.get("personality") or {}
+    if personality:
+        max_q = int(personality.get("max_questions_per_reply", 1))
+        # The new-chat opener may greet by name and ask how they are in one line.
+        if state.get("event_type") != "conversation_start" and (
+            len(detect_questions_in_text(reply)) > max_q and reply.count("?") > max_q
+        ):
+            failures.append("too_many_questions")
+        for phrase in personality.get("banned_phrases") or []:
+            if phrase and phrase.lower() in lower:
+                failures.append(f"banned_phrase:{phrase[:30]}")
+                break
 
     # Legacy: ack + biography + question
     if (
@@ -459,6 +484,12 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
                     failures.append(f"stale_experience_as_now:{core[:40]}")
                     break
 
+    failures.extend(validate_capability(state, reply))
+
+    style = state.get("typing_style") or {}
+    if style.get("emoji_enabled") is False and contains_emoji(reply):
+        failures.append("emoji_present")
+
     return ValidationResult(ok=not failures, failures=list(dict.fromkeys(failures)))
 
 
@@ -485,6 +516,10 @@ def deterministic_fallback_reply(state: dict[str, Any]) -> str:
     if plan.get("answers"):
         return "\n".join(fallback_messages_from_answer_plan(plan))
 
+    cap_fb = capability_fallback_reply(state)
+    if cap_fb:
+        return cap_fb
+
     grounded = q_target in NOW_TARGETS or q_target == "habit" or any(
         t
         in {
@@ -510,14 +545,14 @@ def deterministic_fallback_reply(state: dict[str, Any]) -> str:
         )
 
     if move == "END_CONVERSATION" or speech == "conversation_closing":
-        return "Take care — talk soon."
+        return "talk soon"
     if move == "WAIT":
         return "Mm, yeah."
     if speech == "acknowledgement" or move in {"ACKNOWLEDGE", "REACT", "CONTINUE", "JOKE"}:
         if plan.get("should_ask_question") and "career" in topic:
-            return "Nice 🙂 What sort of technical projects do you usually work on?"
+            return "nice, what sort of technical projects do you usually work on?"
         if "career" in topic or "project" in topic:
-            return "Nice 🙂"
+            return "nice"
         return "Ah nice."
     if speech == "self_disclosure":
         occ = next((f.get("object") for f in user_facts if f.get("predicate") == "occupation"), None)
@@ -529,7 +564,7 @@ def deterministic_fallback_reply(state: dict[str, Any]) -> str:
         if plan.get("should_ask_question"):
             if occ and "project" in (occ or "").lower():
                 return "That's interesting. What kind of technical projects do you usually manage?"
-            return "That's interesting — tell me more about that?"
+            return "thats interesting, what was that like?"
         if occ and "project" in (occ or "").lower():
             return "That makes sense. I imagine half the job is keeping everyone aligned."
         return "That makes sense."
@@ -547,7 +582,7 @@ def deterministic_fallback_reply(state: dict[str, Any]) -> str:
             body += " What kind of projects do you work on?"
         return body
     if speech == "greeting" or move == "REACT" and not speech:
-        return "Hey — how's your day going?"
+        return "hey, how's your day going?"
     if speech == "emotional_statement":
         if move == "SUPPORT":
             return "That sounds rough. What happened?"

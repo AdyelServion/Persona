@@ -24,7 +24,11 @@ from persona_runtime.prompts.registry import PromptRepository
 from persona_runtime.relationships.repositories import RelationshipRepository
 from persona_runtime.state.repositories import PersonaStateRepository
 from persona_runtime.scheduling.jobs import ResponseJobRepository
-from persona_runtime.user_context.provider import MinimalUserContextProvider
+from persona_runtime.conversation.topic_manager import UserTopicRepository
+from persona_runtime.memory.user_memory import UserMemoryService
+from persona_runtime.outbound.settings_repo import ProactiveSettingsRepository
+from persona_runtime.user_context.provider import SocialContextProvider
+from persona_runtime.users.repositories import AppUserRepository
 
 logger = get_logger(__name__)
 
@@ -56,6 +60,7 @@ def build_graph(svc: N.GraphServices):
     graph.add_node("interpret_turn", _bind(N.interpret_turn, svc))
     graph.add_node("generate_subcategory", _bind(N.maybe_generate_subcategory, svc))
     graph.add_node("evaluate_persona", _bind(N.evaluate_persona, svc))
+    graph.add_node("capability_assessment", _bind(N.capability_assessment, svc))
     graph.add_node("behaviour_decision", _bind(N.behaviour_decision, svc))
     graph.add_node("response_plan", _bind(N.response_plan, svc))
     graph.add_node("evidence_guard", _bind(N.evidence_guard, svc))
@@ -83,7 +88,8 @@ def build_graph(svc: N.GraphServices):
         {"generate_subcategory": "generate_subcategory", "evaluate": "evaluate_persona"},
     )
     graph.add_edge("generate_subcategory", "evaluate_persona")
-    graph.add_edge("evaluate_persona", "behaviour_decision")
+    graph.add_edge("evaluate_persona", "capability_assessment")
+    graph.add_edge("capability_assessment", "behaviour_decision")
     graph.add_edge("behaviour_decision", "response_plan")
     graph.add_edge("response_plan", "evidence_guard")
     graph.add_edge("evidence_guard", "generate_response")
@@ -112,6 +118,10 @@ class PersonaRuntime:
         self.conversation_context_repo = ConversationContextRepository(self.db)
         self.job_repo = ResponseJobRepository(self.db)
         self.memory_repo = MemoryRepository(self.db)
+        self.user_repo = AppUserRepository(self.db)
+        self.user_memory = UserMemoryService(self.db)
+        self.topic_repo = UserTopicRepository(self.db)
+        self.proactive_settings_repo = ProactiveSettingsRepository(self.db, self.settings)
         self.prompt_repo = PromptRepository(self.db)
         self.prompt_repo.seed()
         self.llm = llm or LLMClient(self.settings)
@@ -130,7 +140,10 @@ class PersonaRuntime:
             subcategory_service=self.subcategory_service,
             prompt_repo=self.prompt_repo,
             llm=self.llm,
-            user_context_provider=MinimalUserContextProvider(),
+            user_context_provider=SocialContextProvider.default(self.db),
+            user_memory=self.user_memory,
+            topic_repo=self.topic_repo,
+            proactive_settings_repo=self.proactive_settings_repo,
         )
         self.graph = build_graph(self.services)
 
@@ -148,6 +161,7 @@ class PersonaRuntime:
         response_strategy: str | None = None,
         response_job: dict[str, Any] | None = None,
         busy_ack: bool = False,
+        proactive_brief: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         persona_id = persona_id or self.settings.default_persona_id
         user_id = user_id or self.settings.default_user_id
@@ -211,6 +225,17 @@ class PersonaRuntime:
             "assistant_message_ids": [],
             "stored_memories": [],
             "all_canonical_facts": [],
+            "user_profile_card": [],
+            "memory_coverage": {},
+            "user_topics": [],
+            "personality": {},
+            "discovery": {},
+            "self_disclosure": {},
+            "proactive_brief": proactive_brief or {},
+            "social_context": [],
+            "capability_profile": None,
+            "capability_decision": {},
+            "typing_style": None,
         }
         log_event(
             logger,

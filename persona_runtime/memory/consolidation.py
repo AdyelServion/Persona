@@ -11,6 +11,7 @@ from persona_runtime.logging_utils import get_logger
 from persona_runtime.memory.repositories import MemoryRepository
 from persona_runtime.memory.retrieval import jaccard, memory_text, tokenize
 from persona_runtime.memory.schemas import MemoryCandidate, MemoryExtractionResult
+from persona_runtime.memory.user_memory import enrich_candidate, normalize_value, spec_for
 
 logger = get_logger(__name__)
 
@@ -40,13 +41,22 @@ class MemoryConsolidator:
         for cand in items:
             if cand.memory_type == "no_memory":
                 continue
-            if cand.importance < threshold:
+            cand = enrich_candidate(cand)
+            if cand.temporal == "temporary":
+                # A current state ("having coffee right now") is never a lasting preference
+                cand = cand.model_copy(update={"memory_type": "working"})
+            elif cand.importance < threshold:
                 continue
 
             mtype = cand.memory_type
             if mtype == "working":
                 doc = self._candidate_to_doc(cand, persona_id, user_id, conversation_id)
                 stored.append(self.repo.create_memory("working", doc))
+                continue
+
+            spec = spec_for(cand) if mtype == "semantic" else None
+            if spec is not None and not spec.single and cand.object:
+                stored.extend(self._upsert_multi(cand, persona_id, user_id, conversation_id))
                 continue
 
             if mtype == "semantic" and cand.subject and cand.predicate:
@@ -91,7 +101,9 @@ class MemoryConsolidator:
             cand_tokens = tokenize(cand.event_description or cand.fact or cand.pattern or "")
             merged = False
             for ex in existing_list:
-                if ex.get("user_id") not in {None, user_id} and mtype not in {"autobiographical", "life_event"}:
+                # Only merge into this user's own memories — never into persona canon or
+                # another user's docs.
+                if ex.get("user_id") != user_id:
                     continue
                 if jaccard(cand_tokens, tokenize(memory_text(ex))) >= dup_thresh:
                     evidence = list(ex.get("source_message_ids") or [])
@@ -115,6 +127,57 @@ class MemoryConsolidator:
 
         return stored
 
+    def _upsert_multi(
+        self,
+        cand: MemoryCandidate,
+        persona_id: str,
+        user_id: str,
+        conversation_id: str,
+    ) -> list[dict[str, Any]]:
+        """Multi-valued keys (hobbies, music...): dedupe by value, update interest status."""
+        value = normalize_value(cand.object)
+        col = self.repo.collection_for("semantic")
+        existing = None
+        for doc in col.find(
+            {
+                "persona_id": persona_id,
+                "user_id": user_id,
+                "memory_key": cand.memory_key,
+                "status": "active",
+            }
+        ):
+            if normalize_value(doc.get("object")) == value:
+                existing = doc
+                break
+        if existing is None:
+            # Legacy docs written before memory_key existed
+            for doc in col.find(
+                {"persona_id": persona_id, "user_id": user_id, "predicate": cand.predicate, "status": "active"}
+            ):
+                if normalize_value(doc.get("object")) == value:
+                    existing = doc
+                    break
+        if existing is None:
+            doc = self._candidate_to_doc(cand, persona_id, user_id, conversation_id)
+            return [self.repo.create_memory("semantic", doc)]
+
+        evidence = list(dict.fromkeys(list(existing.get("source_message_ids") or []) + cand.source_message_ids))
+        updates: dict[str, Any] = {
+            "source_message_ids": evidence,
+            "memory_key": cand.memory_key,
+            "category": cand.category,
+            "confidence": max(float(existing.get("confidence") or 0), cand.confidence),
+        }
+        if cand.interest_status and cand.interest_status != existing.get("interest_status"):
+            updates["interest_status"] = cand.interest_status
+            updates["fact"] = cand.fact or existing.get("fact")
+            if cand.interest_status == "former":
+                updates["valid_until"] = utcnow()
+            else:
+                updates["valid_until"] = None
+        self.repo.update_memory("semantic", existing["memory_id"], updates)
+        return [{**existing, **updates}]
+
     def _candidate_to_doc(
         self,
         cand: MemoryCandidate,
@@ -128,8 +191,18 @@ class MemoryConsolidator:
             "persona_id": persona_id,
             "user_id": user_id,
             "conversation_id": conversation_id,
-            "scope": "user" if cand.memory_type not in {"autobiographical", "life_event"} else "persona",
+            "source_conversation_id": conversation_id,
+            "source_message_id": (cand.source_message_ids or [None])[-1],
+            # Anything learned in a conversation belongs to that user — never persona-wide.
+            "scope": "user",
             "type": cand.memory_type,
+            "category": cand.category,
+            "memory_key": cand.memory_key,
+            "temporal": cand.temporal or "stable",
+            "interest_status": cand.interest_status,
+            "valid_from": now,
+            "valid_until": cand.valid_until,
+            "superseded_by": None,
             "importance": cand.importance,
             "confidence": cand.confidence,
             "source_message_ids": cand.source_message_ids,

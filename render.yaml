@@ -15,6 +15,10 @@ services:
         value: "false"
       - key: DJANGO_SECRET_KEY
         generateValue: true
+      - key: INTERNAL_API_TOKEN
+        generateValue: true
+      - key: PROACTIVE_OUTBOUND_ENABLED
+        value: "true"
       - key: FASTAPI_BASE_URL
         value: http://127.0.0.1:8001
       - key: FASTAPI_PORT

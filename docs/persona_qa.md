@@ -127,8 +127,9 @@ A lucky reply without a stored memory fails `memory_persisted`.
 ## Limitations
 
 - “Restart backend” = new `PersonaRuntime` on the same DB (no process kill).
-- No user-facing memory delete API; “forget” tests use `status: superseded`.
-- No named quiet-hours setting; `PROACTIVE-010` covers sleeping / low availability.
+- “Forget” tests use `status: superseded`. The user-facing delete API (`DELETE /api/memories/{id}`) is covered by `tests/test_user_memory.py`.
+- Per-user quiet hours, caps and opt-in are covered by the `proactive_outbound` category (`OUTBOUND-*`) and `tests/test_proactive_engine.py`. `PROACTIVE-010` still covers sleeping / low availability.
+- Categories `multi_user_isolation` (`MULTIUSER-*`), `extrovert_engagement` (`EXTROVERT-*`) and `proactive_outbound` (`OUTBOUND-*`) use the `switch_user` and `proactive_outreach` actions and the `no_cross_user_leak`, `extrovert_limits` and `outbound_respected` assertions. Outreach always uses `TestDelivery`.
 - `MemoryRetriever` recency uses injectable `utcnow()` (fixed for clock tests).
 - `FORMAT-010` and `PERSIST-009` set a shared stub failure mode. The runner resets that mode at the start of every case.
 - Offline generation speaks `ANSWER_PLAN` direct answers when the pipeline produced them, then the authoritative `CLOCK` block. It does not scan the whole persona dump for the first keyword.

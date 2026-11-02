@@ -11,6 +11,7 @@ from persona_runtime.db.time_utils import ensure_utc, utcnow
 from persona_runtime.exceptions import MemoryRetrievalError
 from persona_runtime.logging_utils import get_logger
 from persona_runtime.memory.repositories import MemoryRepository
+from persona_runtime.memory.user_memory import category_boost, is_expired, memory_status_label
 
 logger = get_logger(__name__)
 
@@ -83,6 +84,19 @@ class MemoryRetriever:
             # Privacy: relationship memories for other people stay out
             if mem.get("scope") == "relationship" and mem.get("other_person_id") not in {None, user_id}:
                 continue
+            owner = mem.get("user_id")
+            if owner not in {None, user_id}:
+                logger.critical(
+                    "cross_user_memory_blocked memory_id=%s owner=%s requester=%s",
+                    mem.get("memory_id"),
+                    owner,
+                    user_id,
+                )
+                continue
+            if owner is None and mem.get("scope") == "user":
+                continue
+            if is_expired(mem, now):
+                continue
             text = memory_text(mem)
             m_tokens = tokenize(text)
             overlap = jaccard(q_tokens, m_tokens)
@@ -96,7 +110,15 @@ class MemoryRetriever:
                 recency = max(0.05, 1.0 / (1.0 + days / 7.0))
             # Always lightly include high-importance user episodic even on weak lexical match
             user_scope_boost = 0.15 if mem.get("user_id") == user_id and mem.get("_memory_type") == "episodic" else 0.0
-            score = overlap * 2.0 + importance * 0.8 + recency * 0.4 + user_scope_boost
+            score = (
+                overlap * 2.0
+                + importance * 0.8
+                + recency * 0.4
+                + user_scope_boost
+                + (category_boost(q_tokens, mem) if owner == user_id else 0.0)
+            )
+            if mem.get("interest_status") == "former":
+                score -= 0.2
             # If query is a greeting and memory is recent important episodic about user, keep it
             greeting = q_tokens <= {"hey", "hi", "hello", "sarah"} or not q_tokens
             if greeting and mem.get("user_id") == user_id and importance >= 0.5:
@@ -105,7 +127,7 @@ class MemoryRetriever:
                 scored.append((score, mem))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        top = [m for _, m in scored[:limit]]
+        top = [{**m, "status_label": memory_status_label(m)} for _, m in scored[:limit]]
         for mem in top:
             mtype = mem.get("_memory_type") or mem.get("type")
             if mtype and mem.get("memory_id"):
@@ -154,6 +176,8 @@ class MemoryRetriever:
             except Exception:  # noqa: BLE001
                 continue
             for mem in memories:
+                if mem.get("user_id") != user_id:
+                    continue
                 if mem.get("outcome_known") is True:
                     continue
                 horizon = mem.get("horizon") or ""

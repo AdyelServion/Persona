@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pymongo import ASCENDING, MongoClient
+from pymongo import ASCENDING, DESCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
 
@@ -36,6 +36,10 @@ COLLECTION_NAMES = {
     "events": "Events",
     "response_jobs": "ResponseJobs",
     "timeline_events": "TimelineEvents",
+    # Multi-user social persona
+    "app_users": "AppUsers",
+    "user_topics": "UserPersonaTopics",
+    "proactive_settings": "ProactiveSettings",
     # Persona consistency QA (isolated from production collections)
     "persona_test_suites": "PersonaTestSuites",
     "persona_test_cases": "PersonaTestCases",
@@ -139,15 +143,48 @@ def ensure_indexes(db: Database | None = None) -> None:
         [("persona_id", ASCENDING), ("user_id", ASCENDING), ("status", ASCENDING)]
     )
     conversations.create_index([("conversation_id", ASCENDING)], unique=True)
+    conversations.create_index(
+        [("user_id", ASCENDING), ("persona_id", ASCENDING), ("last_message_at", DESCENDING)],
+        name="conversations_user_recent",
+    )
+
+    app_users = db[COLLECTION_NAMES["app_users"]]
+    app_users.create_index([("user_id", ASCENDING)], unique=True)
+
+    user_topics = db[COLLECTION_NAMES["user_topics"]]
+    user_topics.create_index(
+        [("user_id", ASCENDING), ("persona_id", ASCENDING), ("topic", ASCENDING)],
+        unique=True,
+        name="user_topic_unique",
+    )
+
+    proactive_settings = db[COLLECTION_NAMES["proactive_settings"]]
+    proactive_settings.create_index(
+        [("user_id", ASCENDING), ("persona_id", ASCENDING)], unique=True
+    )
+    proactive_settings.create_index([("enabled", ASCENDING)])
 
     messages = db[COLLECTION_NAMES["messages"]]
     messages.create_index([("conversation_id", ASCENDING), ("timestamp", ASCENDING)])
     messages.create_index([("conversation_id", ASCENDING), ("sequence", ASCENDING)])
     messages.create_index([("conversation_id", ASCENDING), ("status", ASCENDING)])
     messages.create_index([("message_id", ASCENDING)], unique=True)
+    messages.create_index([("user_id", ASCENDING), ("conversation_id", ASCENDING)])
+    messages.create_index([("outbound_id", ASCENDING)])
 
     response_jobs = db[COLLECTION_NAMES["response_jobs"]]
     response_jobs.create_index([("job_id", ASCENDING)], unique=True)
+    response_jobs.create_index([("user_id", ASCENDING), ("event_type", ASCENDING)])
+    try:
+        response_jobs.create_index(
+            [("idempotency_key", ASCENDING)],
+            unique=True,
+            partialFilterExpression={"idempotency_key": {"$type": "string"}},
+            name="job_idempotency_key",
+        )
+    except Exception:  # noqa: BLE001
+        # Uniqueness is also enforced in ResponseJobRepository.create_idempotent
+        response_jobs.create_index([("idempotency_key", ASCENDING)], name="job_idempotency_lookup")
     response_jobs.create_index([("status", ASCENDING), ("scheduled_for", ASCENDING)])
     response_jobs.create_index([("persona_id", ASCENDING), ("conversation_id", ASCENDING)])
     try:
@@ -185,6 +222,15 @@ def ensure_indexes(db: Database | None = None) -> None:
         col.create_index([("importance", ASCENDING)])
 
     semantic = db[COLLECTION_NAMES["semantic"]]
+    semantic.create_index(
+        [
+            ("persona_id", ASCENDING),
+            ("user_id", ASCENDING),
+            ("memory_key", ASCENDING),
+            ("status", ASCENDING),
+        ],
+        name="semantic_user_key",
+    )
     semantic.create_index(
         [
             ("persona_id", ASCENDING),

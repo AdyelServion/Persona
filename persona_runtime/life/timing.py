@@ -153,10 +153,15 @@ def compute_response_schedule(
         engage_prob = base_prob
     engaged = engage_roll < engage_prob
 
-    end_at = ensure_utc(activity_expected_end_at) if activity_expected_end_at else None
+    # `activity_expected_end_at` only gates timing while `sleeping` (above) — every
+    # other busy activity still gets a short, human-scale reply delay below instead
+    # of waiting for the activity to end.
     very_busy = params.availability < 0.15 or params.busy or force_after_busy
 
-    # --- Very busy / forced defer ---
+    # --- Very busy / quick reply even though occupied ---
+    # Sarah is still busy (meeting, gym, with friends...) but, like real texting,
+    # she still glances at her phone within a short human delay — never waits
+    # until the activity ends (that only happens for `sleeping`, handled above).
     if very_busy and not engaged:
         delay_minutes = _sample_delay_minutes(
             rng,
@@ -169,28 +174,16 @@ def compute_response_schedule(
             toward_late=True,
         )
         delay_seconds = delay_minutes * 60.0 * scale
-        if end_at and end_at > now:
-            after = end_at + timedelta(seconds=delay_seconds * 0.2)
-            scheduled = after
-            strategy_hint = "DEFER_RESPONSE"
-            reason = f"waiting_until_{params.key}_ends"
-        else:
-            scheduled = now + timedelta(seconds=max(batch_floor, delay_seconds))
-            strategy_hint = "DEFER_RESPONSE"
-            reason = f"deferred_{params.key}"
-        read_at = (
-            end_at + timedelta(seconds=15 * scale)
-            if end_at and end_at > now
-            else min(scheduled, now + timedelta(seconds=max(5.0 * scale, delay_seconds * 0.35)))
-        )
+        scheduled = now + timedelta(seconds=max(batch_floor, delay_seconds))
+        read_at = min(scheduled, now + timedelta(seconds=max(5.0 * scale, delay_seconds * 0.35)))
         return {
             "scheduled_for": ensure_utc(scheduled),
             "read_at": ensure_utc(read_at),
             "delay_seconds": (ensure_utc(scheduled) - now).total_seconds(),
-            "reason": reason,
+            "reason": f"deferred_{params.key}",
             "activity": params.key,
             "availability": avail,
-            "strategy_hint": strategy_hint,
+            "strategy_hint": "DEFER_RESPONSE",
             "engaged": False,
         }
 
@@ -221,22 +214,13 @@ def compute_response_schedule(
             toward_late=True,
         )
         delay_seconds = delay_minutes * 60.0 * scale
-        if end_at and end_at > now:
-            scheduled = end_at + timedelta(seconds=delay_seconds * 0.2)
-            reason = f"waiting_until_{params.key}_ends"
-        else:
-            scheduled = now + timedelta(seconds=max(batch_floor, delay_seconds))
-            reason = f"deferred_{params.key}"
-        read_at = (
-            end_at + timedelta(seconds=15 * scale)
-            if end_at and end_at > now
-            else min(scheduled, now + timedelta(seconds=max(5.0 * scale, delay_seconds * 0.35)))
-        )
+        scheduled = now + timedelta(seconds=max(batch_floor, delay_seconds))
+        read_at = min(scheduled, now + timedelta(seconds=max(5.0 * scale, delay_seconds * 0.35)))
         return {
             "scheduled_for": ensure_utc(scheduled),
             "read_at": ensure_utc(read_at),
             "delay_seconds": (ensure_utc(scheduled) - now).total_seconds(),
-            "reason": reason,
+            "reason": f"deferred_{params.key}",
             "activity": params.key,
             "availability": avail,
             "strategy_hint": "DEFER_RESPONSE",

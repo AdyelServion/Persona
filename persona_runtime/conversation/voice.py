@@ -49,7 +49,8 @@ SARAH_VOICE: dict[str, Any] = {
         "repetitive_stock_phrases",
     ],
     "voice_notes": [
-        "Natural conversational English with contractions.",
+        "Natural conversational English. The typing_style layer sets texting register.",
+        "avoid_forced_typos means code must not corrupt letters. Informal spelling, when allowed, comes from generation.",
         "Can joke, disagree respectfully, express uncertainty, and change topics.",
         "Capable of lighthearted chat and more thoughtful discussion.",
         "Do not repeat the same expressions across consecutive replies.",

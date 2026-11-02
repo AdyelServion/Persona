@@ -30,6 +30,8 @@ class ResponseScheduler:
         relationship_repo,
         settings,
         life_simulator: LifeSimulator | None = None,
+        proactive_settings_repo=None,
+        conversation_context_repo=None,
     ):
         self.conversation_repo = conversation_repo
         self.job_repo = job_repo
@@ -37,6 +39,58 @@ class ResponseScheduler:
         self.relationship_repo = relationship_repo
         self.settings = settings
         self.life = life_simulator or LifeSimulator(state_repo, tz_name=settings.timezone)
+        self.proactive_settings_repo = proactive_settings_repo
+        self.conversation_context_repo = conversation_context_repo
+
+    def _on_user_reply(self, conversation_id: str, persona_id: str, user_id: str, content: str = "") -> None:
+        """A user reply clears outbound suppression and lets Sarah lead the next few turns."""
+        if self.proactive_settings_repo is None:
+            return
+        from persona_runtime.conversation.topics import detect_proactive_opt_out
+
+        if detect_proactive_opt_out(content):
+            self.proactive_settings_repo.opt_out(user_id, persona_id, reason="asked_in_conversation")
+            for job in self.job_repo.open_proactive_for_user(user_id):
+                self.job_repo.cancel(job["job_id"], reason="user_opted_out")
+            self.conversation_repo.record_event(
+                "proactive_opt_out", {"user_id": user_id, "persona_id": persona_id, "via": "message"}
+            )
+        answered = self.proactive_settings_repo.record_user_reply(user_id, persona_id)
+        if answered and self.conversation_context_repo is not None:
+            self.conversation_context_repo.get_or_create(
+                conversation_id=conversation_id, persona_id=persona_id, user_id=user_id
+            )
+            self.conversation_context_repo.update(
+                conversation_id,
+                {
+                    "session_mode": "sarah_led",
+                    "sarah_led_turns_left": int(getattr(self.settings, "sarah_led_turns", 4)),
+                },
+            )
+            self.conversation_repo.record_event(
+                "proactive_replied",
+                {
+                    "conversation_id": conversation_id,
+                    "persona_id": persona_id,
+                    "user_id": user_id,
+                    "outbound_id": answered.get("answered_outbound_id"),
+                },
+            )
+
+    def _schedule(self, **kwargs: Any) -> dict[str, Any]:
+        """compute_response_schedule, collapsed to a short batch window when delays are off."""
+        schedule = compute_response_schedule(**kwargs)
+        if not getattr(self.settings, "realistic_reply_delays", True):
+            now = kwargs.get("now") or utcnow()
+            window = float(getattr(self.settings, "batch_window_min_seconds", 2.0))
+            schedule = {
+                **schedule,
+                "scheduled_for": ensure_utc(now) + timedelta(seconds=min(window, 3.0)),
+                "read_at": now,
+                "reason": "immediate_reply",
+                "strategy_hint": "RESPOND_TO_GROUP",
+            }
+        return schedule
 
     def accept_user_message(
         self,
@@ -61,8 +115,16 @@ class ResponseScheduler:
             status="pending_response",
             priority=priority,
         )
+        try:
+            self._on_user_reply(conversation_id, persona_id, user_id, content)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("on_user_reply_failed: %s", exc)
 
         open_job = self.job_repo.get_open_for_conversation(conversation_id)
+        if open_job and open_job.get("event_type") == "proactive" and open_job.get("status") == "scheduled":
+            # The user spoke first — the pending outbound is no longer needed
+            self.job_repo.cancel(open_job["job_id"], reason="user_spoke_first")
+            open_job = None
         if open_job and open_job.get("status") == "running":
             # Generation already started — leave for next cycle
             log_event(
@@ -84,7 +146,7 @@ class ResponseScheduler:
             updates: dict[str, Any] = {}
             if priority in {"urgent", "emotionally_important", "important"}:
                 rel = self.relationship_repo.get_or_create_user_relationship(persona_id, user_id)
-                schedule = compute_response_schedule(
+                schedule = self._schedule(
                     activity_key=current.get("current_activity") or "relaxing",
                     availability=float(current.get("availability") or 0.5),
                     priority=priority,
@@ -125,7 +187,7 @@ class ResponseScheduler:
         # Create new job
         rel = self.relationship_repo.get_or_create_user_relationship(persona_id, user_id)
         seed = f"{conversation_id}:{msg['message_id']}"
-        schedule = compute_response_schedule(
+        schedule = self._schedule(
             activity_key=current.get("current_activity") or "relaxing",
             availability=float(current.get("availability") or 0.5),
             priority=priority,
@@ -148,6 +210,7 @@ class ResponseScheduler:
                 "reason": schedule["reason"],
                 "strategy": schedule.get("strategy_hint"),
                 "event_type": "user_message",
+                "user_id": user_id,
             }
         )
         self.conversation_repo.update_message(
@@ -192,6 +255,7 @@ class ResponseScheduler:
                 "reason": "conversation_opening",
                 "strategy": "RESPOND_TO_LATEST",
                 "event_type": "conversation_start",
+                "user_id": user_id,
             }
         )
         return job

@@ -250,6 +250,7 @@ class ScenarioRunner:
             "graph_result": graph_result,
             "action_result": action_result,
             "conversation_id": env.conversation_id,
+            "capability_decision": (graph_result or {}).get("capability_decision") or {},
         }
 
     def _send_user_message(self, env: QAEnvironment, content: str) -> dict[str, Any]:
@@ -293,6 +294,22 @@ class ScenarioRunner:
         if action == "rebuild_runtime":
             env.rebuild_runtime()
             return {"ok": True}
+        if action == "set_capability_profile":
+            from persona_runtime.capability.seed import (
+                SARAH_CAPABILITY_PROFILE,
+                SOFTWARE_ENGINEER_PROFILE,
+            )
+
+            preset = str(params.get("preset") or "").lower()
+            profile = params.get("profile")
+            if preset in {"software_engineer", "engineer", "developer"}:
+                profile = SOFTWARE_ENGINEER_PROFILE
+            elif preset in {"sarah", "accountant"}:
+                profile = SARAH_CAPABILITY_PROFILE
+            if not isinstance(profile, dict):
+                raise ValueError("set_capability_profile needs preset or profile")
+            env.set_capability_profile(profile)
+            return {"ok": True, "preset": preset or "custom"}
         if action == "correct_canonical_fact":
             env.correct_canonical_fact(params["fact_id"], params["object"])
             return {"ok": True}
@@ -324,6 +341,8 @@ class ScenarioRunner:
             return {"ok": True, "exception": params}
         if action == "schedule_resume":
             return self._schedule_resume(env, params)
+        if action == "proactive_outreach":
+            return self._proactive_outreach(env, params)
         if action == "send_concurrent_messages":
             results = []
             for content in params.get("messages") or []:
@@ -406,6 +425,54 @@ class ScenarioRunner:
         if action == "seed_memory_prelude":
             return {"ok": True}
         raise ValueError(f"Unknown QA action: {action}")
+
+    def _proactive_outreach(self, env: QAEnvironment, params: dict[str, Any]) -> dict[str, Any]:
+        """Run the outbound planner for the current test user (test delivery only)."""
+        from persona_runtime.outbound.delivery import TestDelivery
+        from persona_runtime.outbound.planner import ProactivePlanner
+
+        assert env.runtime
+        env.settings.proactive_outbound_enabled = bool(params.get("global_enabled", True))
+        repo = env.runtime.proactive_settings_repo
+        repo.get_or_create(env.user_id, env.persona_id, timezone="UTC")
+        updates: dict[str, Any] = {"quiet_start": "00:00", "quiet_end": "00:00"}
+        if params.get("opt_in") is not None:
+            updates["enabled"] = bool(params["opt_in"])
+        repo.update_public(env.user_id, env.persona_id, updates)
+        if env.conversation_id:
+            # The runner calls the graph directly, so mirror the worker's "answered" bookkeeping.
+            pending = env.runtime.conversation_repo.pending_user_messages(env.conversation_id)
+            if pending:
+                env.runtime.conversation_repo.update_messages(
+                    [m["message_id"] for m in pending], {"status": "answered", "answered_at": utcnow()}
+                )
+
+        delivery = TestDelivery(env.runtime.conversation_repo)
+        planner = ProactivePlanner(
+            runtime=env.runtime, settings=env.settings, delivery=delivery, persona_id=env.persona_id
+        )
+        outcome = planner.evaluate_user(env.user_id)
+        result: dict[str, Any] = {
+            "ok": True,
+            "outbound": {k: v for k, v in outcome.items() if k != "job"},
+            "sent": False,
+            "messages": [],
+            "message_types": [],
+        }
+        job = outcome.get("job")
+        if job:
+            executed = planner.execute(env.runtime.job_repo.get(job["job_id"]) or job)
+            msgs = [env.runtime.conversation_repo.get_message(m) or {} for m in executed.get("message_ids") or []]
+            result.update(
+                sent=bool(executed.get("sent")),
+                execute_reason=executed.get("reason"),
+                messages=[m.get("content") or "" for m in msgs],
+                message_types=[m.get("message_type") for m in msgs],
+                proactive_type=(job.get("proactive_brief") or {}).get("proactive_type"),
+                delivered=len(delivery.sent),
+            )
+            result["second_reason"] = planner.evaluate_user(env.user_id).get("reason")
+        return result
 
     def _schedule_resume(self, env: QAEnvironment, params: dict[str, Any]) -> dict[str, Any]:
         assert env.runtime
@@ -595,6 +662,7 @@ def run_suite(
                             a.model_dump() if isinstance(a, AssertionResult) else a
                             for a in (step_rec.get("assertion_results") or [])
                         ],
+                        "capability_decision": step_rec.get("capability_decision") or {},
                     }
                 )
             if status == "failed":

@@ -61,12 +61,13 @@ def test_working_skip_is_later_in_band():
     )
     assert sched["engaged"] is False
     assert sched["reason"].startswith("later_while_")
-    assert sched["delay_seconds"] >= 3 * 60
+    # Skip path is still short and human — "working"'s band is capped at 2.5 min.
+    assert 0 < sched["delay_seconds"] <= 2.5 * 60
 
 
-def test_meeting_defers_past_end():
+def test_meeting_still_replies_promptly_not_after_it_ends():
+    """Even in a meeting, Sarah glances at her phone — she never waits for it to end."""
     end = NOW + timedelta(minutes=45)
-    # Prefer skip path; meeting response_probability is 0.10
     seed = _find_seed(activity="meeting", want_engaged=False)
     sched = compute_response_schedule(
         activity_key="meeting",
@@ -78,11 +79,10 @@ def test_meeting_defers_past_end():
         time_scale=1.0,
         seed=seed,
     )
-    assert sched["scheduled_for"] >= end
-    assert "waiting_until_meeting_ends" in sched["reason"] or sched["reason"].startswith(
-        "deferred_"
-    )
-    assert sched["delay_seconds"] > 5 * 60
+    # Replies well before the meeting ends, within the short "meeting" band (<=5 min).
+    assert sched["scheduled_for"] < end
+    assert sched["reason"].startswith("deferred_")
+    assert 0 < sched["delay_seconds"] <= 5 * 60
 
 
 def test_sleeping_defers_until_wake():

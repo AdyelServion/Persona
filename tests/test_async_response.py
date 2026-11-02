@@ -159,8 +159,8 @@ def test_superseded_message_strategy():
     assert "m2" in plan["include_ids"]
 
 
-# --- TEST 6: Busy Sarah does not respond immediately ---
-def test_busy_meeting_defers(runtime, scheduler, worker, clock):
+# --- TEST 6: Busy Sarah still replies promptly, just a touch slower ---
+def test_busy_meeting_still_replies_within_short_delay(runtime, scheduler, worker, clock):
     life = LifeSimulator(runtime.state_repo)
     life.force_activity("sarah_taylor_001", "meeting", duration_minutes=45, now=clock.now)
     conv = _conv(runtime)
@@ -172,17 +172,18 @@ def test_busy_meeting_defers(runtime, scheduler, worker, clock):
         content="Hey",
     )
     job = result["job"]
-    assert job["scheduled_for"] > clock.now + timedelta(minutes=5)
+    # Busy, so not instant, but never more than the short "meeting" band (<=5 min) —
+    # she still glances at her phone instead of going silent until the meeting ends.
+    assert clock.now < job["scheduled_for"] <= clock.now + timedelta(minutes=5)
     # Worker tick before due — should not complete
     assert worker.process_due() == 0
     msgs = runtime.conversation_repo.list_messages(cid)
     assert all(m["sender"] == "user" for m in msgs)
 
 
-# --- TEST 7: Busy ack consistency — follow-up after meeting end ---
-def test_busy_ack_follow_up_after_end(runtime, scheduler, worker, clock):
+# --- TEST 7: Busy ack consistency — short follow-up, never waits for the meeting to end ---
+def test_busy_ack_follow_up_is_short_not_after_end(runtime, scheduler, worker, clock):
     life = LifeSimulator(runtime.state_repo)
-    end = clock.now + timedelta(minutes=40)
     life.force_activity("sarah_taylor_001", "meeting", duration_minutes=40, now=clock.now)
     # Ensure expected end is set
     state = runtime.state_repo.get_state("sarah_taylor_001")["current_state"]
@@ -205,15 +206,12 @@ def test_busy_ack_follow_up_after_end(runtime, scheduler, worker, clock):
     )
     processed = worker.process_due()
     assert processed == 1
-    msgs = runtime.conversation_repo.list_messages(cid)
-    assistants = [m for m in msgs if m["sender"] == "assistant"]
-    # May have busy ack
+    # Any follow-up (the full reply after a quick busy ack) is scheduled shortly —
+    # never pinned to the meeting's end time.
     follow = runtime.job_repo.get_open_for_conversation(cid)
-    if assistants and "meeting" in (assistants[0]["content"] or "").lower():
-        assert follow is not None
-        assert ensure_utc(follow["scheduled_for"]) >= ensure_utc(state["activity_expected_end_at"])
-    elif follow:
+    if follow:
         assert ensure_utc(follow["scheduled_for"]) >= ensure_utc(clock.now)
+        assert ensure_utc(follow["scheduled_for"]) <= ensure_utc(clock.now) + timedelta(minutes=3)
 
 
 # --- TEST 8: Life state change moves timing ---
@@ -244,6 +242,29 @@ def test_life_transition_affects_timing(runtime, scheduler, clock):
     assert r2["job"]["activity_at_schedule"] == "gym"
     assert r1["job"]["activity_at_schedule"] == "working"
     assert t_work is not None
+
+
+def test_new_chat_opening_sends_while_sleeping(runtime, scheduler, worker, clock):
+    life = LifeSimulator(runtime.state_repo)
+    life.force_activity("sarah_taylor_001", "sleeping", duration_minutes=420, now=clock.now)
+    conv = _conv(runtime)
+    cid = conv["conversation_id"]
+    job = scheduler.schedule_opening(
+        conversation_id=cid,
+        persona_id="sarah_taylor_001",
+        user_id=conv["user_id"],
+    )
+    assert job
+    clock.set(job["scheduled_for"] + timedelta(seconds=1))
+    assert worker.process_due() == 1
+    msgs = runtime.conversation_repo.list_messages(cid)
+    assistants = [m for m in msgs if m["sender"] == "assistant"]
+    assert len(assistants) == 1
+    assert "how" in assistants[0]["content"].lower()
+    completed = [j for j in runtime.job_repo.list_for_conversation(cid) if j["status"] == "completed"]
+    assert completed[0].get("strategy") == "OPENING"
+    ctx = runtime.conversation_context_repo.get(cid)
+    assert ctx["onboarding_step"] == "how_are_you"
 
 
 # --- TEST 9: Sleep waits until wake ---

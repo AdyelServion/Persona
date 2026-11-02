@@ -2273,6 +2273,895 @@ def _persist_cases() -> list[TestCaseDef]:
     ]
 
 
+# ---------------------------------------------------------------------------
+# Category L — Multi-user isolation
+# ---------------------------------------------------------------------------
+
+def _multiuser_cases() -> list[TestCaseDef]:
+    return [
+        _case(
+            "MULTIUSER-001",
+            "multi_user_isolation",
+            "A second user never sees the first user's facts",
+            [
+                _step(1, message="My name is Alex and I drive a Honda CR-Z."),
+                _step(2, action="switch_user", action_params={"user_suffix": "john"}),
+                _step(
+                    3,
+                    message="What car do I drive?",
+                    assertions=[
+                        _assert(
+                            "no_cross_user_leak",
+                            required=True,
+                            options={"terms": ["cr-z", "honda", "alex"]},
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "MULTIUSER-002",
+            "multi_user_isolation",
+            "Alex, John and David keep separate memories",
+            [
+                _step(1, message="My name is Alex. I love photography."),
+                _step(2, action="switch_user", action_params={"user_suffix": "john"}),
+                _step(3, message="My name is John. I play chess every weekend."),
+                _step(4, action="switch_user", action_params={"user_suffix": "david"}),
+                _step(
+                    5,
+                    message="Do you remember my name and my hobby?",
+                    assertions=[
+                        _assert(
+                            "no_cross_user_leak",
+                            required=True,
+                            options={"terms": ["alex", "john", "photography", "chess"]},
+                        ),
+                        _assert("no_unsupported_claim", path="user.name", required=True),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "MULTIUSER-003",
+            "multi_user_isolation",
+            "Same fact type for two users stays attached to each owner",
+            [
+                _step(1, message="I support Arsenal."),
+                _step(2, action="switch_user", action_params={"user_suffix": "john"}),
+                _step(
+                    3,
+                    message="I support Liverpool.",
+                    assertions=[
+                        _assert("no_cross_user_leak", required=True, options={"terms": ["arsenal"]}),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Category M — Extrovert engagement
+# ---------------------------------------------------------------------------
+
+def _extrovert_cases() -> list[TestCaseDef]:
+    return [
+        _case(
+            "EXTROVERT-001",
+            "extrovert_engagement",
+            "Thin replies get a topic, not an interrogation",
+            [
+                _step(1, message="I've been getting into photography lately."),
+                _step(2, message="ok", assertions=[_assert("extrovert_limits", required=True)]),
+                _step(3, message="yeah", assertions=[_assert("extrovert_limits", required=True)]),
+            ],
+            severity="high",
+        ),
+        _case(
+            "EXTROVERT-002",
+            "extrovert_engagement",
+            "Sharing a hobby gets an engaged reply with at most one question",
+            [
+                _step(
+                    1,
+                    message="I spent the whole weekend hiking in the hills.",
+                    assertions=[
+                        _assert("extrovert_limits", required=True),
+                        _assert("topic_relevance", path="hiking", evaluation_mode="live", required=False),
+                    ],
+                ),
+            ],
+            evaluation_mode="mixed",
+        ),
+        _case(
+            "EXTROVERT-003",
+            "extrovert_engagement",
+            "A declined topic is not pushed afterwards",
+            [
+                _step(1, message="I'd rather not talk about work, honestly."),
+                _step(
+                    2,
+                    message="ok",
+                    assertions=[
+                        _assert(
+                            "extrovert_limits",
+                            required=True,
+                            options={"forbid_terms": ["your job", "at work", "your boss"]},
+                        ),
+                    ],
+                ),
+            ],
+            severity="high",
+        ),
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Category N — Proactive outbound
+# ---------------------------------------------------------------------------
+
+def _outbound_cases() -> list[TestCaseDef]:
+    return [
+        _case(
+            "OUTBOUND-001",
+            "proactive_outbound",
+            "No outreach without opt-in",
+            [
+                _step(1, message="I love hiking on weekends."),
+                _step(
+                    2,
+                    action="proactive_outreach",
+                    action_params={"opt_in": False},
+                    assertions=[
+                        _assert(
+                            "outbound_respected",
+                            required=True,
+                            options={"expect_sent": False, "expect_reason": "not_opted_in"},
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "OUTBOUND-002",
+            "proactive_outbound",
+            "Opted-in outreach is grounded, capped and never stacked",
+            [
+                _step(1, message="I love hiking on weekends."),
+                _step(
+                    2,
+                    action="proactive_outreach",
+                    action_params={"opt_in": True},
+                    assertions=[
+                        _assert(
+                            "outbound_respected",
+                            required=True,
+                            options={
+                                "expect_sent": True,
+                                "max_bubbles": 3,
+                                "max_questions": 1,
+                                "expect_second_reason": "awaiting_reply",
+                            },
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "OUTBOUND-003",
+            "proactive_outbound",
+            "Global kill switch blocks outreach",
+            [
+                _step(1, message="I love hiking on weekends."),
+                _step(
+                    2,
+                    action="proactive_outreach",
+                    action_params={"opt_in": True, "global_enabled": False},
+                    assertions=[
+                        _assert(
+                            "outbound_respected",
+                            required=True,
+                            options={"expect_sent": False, "expect_reason": "globally_disabled"},
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "OUTBOUND-004",
+            "proactive_outbound",
+            "Outreach to one user never uses another user's facts",
+            [
+                _step(1, message="I'm restoring a vintage Vespa scooter."),
+                _step(2, action="switch_user", action_params={"user_suffix": "john"}),
+                _step(3, message="I play chess most evenings."),
+                _step(
+                    4,
+                    action="proactive_outreach",
+                    action_params={"opt_in": True},
+                    assertions=[
+                        _assert(
+                            "outbound_respected",
+                            required=True,
+                            options={"forbid_terms": ["vespa", "scooter"]},
+                        ),
+                        _assert("no_cross_user_leak", required=True, options={"terms": ["vespa", "scooter"]}),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "OUTBOUND-005",
+            "proactive_outbound",
+            "Asking Sarah to stop messaging first opts the user out",
+            [
+                _step(1, action="proactive_outreach", action_params={"opt_in": True}),
+                _step(2, message="I love hiking on weekends."),
+                _step(3, message="Please don't message me first anymore."),
+                _step(
+                    4,
+                    action="proactive_outreach",
+                    action_params={},
+                    assertions=[
+                        _assert(
+                            "outbound_respected",
+                            required=True,
+                            options={"expect_sent": False, "expect_reason": "not_opted_in"},
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+    ]
+
+
+def _capability_cases() -> list[TestCaseDef]:
+    cat = "persona_capability"
+
+    def cap_asserts(*extra: dict, category: str | list[str], judge: str) -> list[dict]:
+        allowed = [category] if isinstance(category, str) else list(category)
+        out = [
+            _assert("response_schema_valid", required=True),
+            _assert("capability_category", required=True, expected=allowed[0], options={"allowed": allowed}),
+            _assert("no_false_qualification", required=True),
+            _assert("no_invented_experience", required=True),
+            _assert(
+                "capability_judge",
+                required=False,
+                evaluation_mode="live",
+                expected=judge,
+            ),
+        ]
+        out.extend(extra)
+        return out
+
+    return [
+        _case(
+            "CAP-001",
+            cat,
+            "Core expertise: variance analysis",
+            [
+                _step(
+                    1,
+                    message="What is variance analysis?",
+                    expected_behavior="Confident, relevant explanation consistent with management accounting",
+                    assertions=cap_asserts(
+                        category="A",
+                        judge="Confident practical explanation of variance analysis, not a refusal",
+                    ),
+                )
+            ],
+            description="Sarah explains a core professional concept confidently.",
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "core"],
+        ),
+        _case(
+            "CAP-002",
+            cat,
+            "Professional knowledge: monthly financial report",
+            [
+                _step(
+                    1,
+                    message="How do you prepare a monthly financial report?",
+                    expected_behavior="Natural process explanation consistent with her profession",
+                    assertions=cap_asserts(
+                        category="A",
+                        judge="Explains monthly reporting as a management accountant, naturally",
+                    ),
+                )
+            ],
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "core"],
+        ),
+        _case(
+            "CAP-003",
+            cat,
+            "Related knowledge: submitting tax",
+            [
+                _step(
+                    1,
+                    message="How can I submit my tax?",
+                    expected_behavior="Recognises the accounting link without assuming jurisdiction or specialist tax advice",
+                    assertions=cap_asserts(
+                        category="B",
+                        judge="Acknowledges tax is related but does not assume country or give filing steps",
+                    ),
+                )
+            ],
+            severity="critical",
+            evaluation_mode="mixed",
+            tags=[cat, "related", "high_stakes"],
+        ),
+        _case(
+            "CAP-004",
+            cat,
+            "General knowledge: artificial intelligence",
+            [
+                _step(
+                    1,
+                    message="What is artificial intelligence?",
+                    expected_behavior="Simple natural explanation, not a refusal",
+                    assertions=cap_asserts(
+                        category="C",
+                        judge=(
+                            "PASS a short everyday definition of AI, including standard popular "
+                            "wording such as simulation of human intelligence. Fail only if she "
+                            "refuses, claims to be an AI researcher, or writes a specialist lecture."
+                        ),
+                    ),
+                )
+            ],
+            evaluation_mode="mixed",
+            tags=[cat, "general"],
+        ),
+        _case(
+            "CAP-005",
+            cat,
+            "Outside expertise: write C++ code",
+            [
+                _step(
+                    1,
+                    message="Write C++ code for table of 2.",
+                    expected_behavior="Naturally says programming is not her area; no complete code",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Casual admission that coding is not her thing; no C++ source",
+                    ),
+                )
+            ],
+            severity="critical",
+            evaluation_mode="mixed",
+            tags=[cat, "outside"],
+        ),
+        _case(
+            "CAP-006",
+            cat,
+            "Basic technology: what is Python",
+            [
+                _step(
+                    1,
+                    message="What is Python?",
+                    expected_behavior="Can say it is a programming language in simple terms",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category=["C", "E"],
+                        judge="Simple explanation that Python is a programming language, not a tutorial or script",
+                    ),
+                )
+            ],
+            evaluation_mode="mixed",
+            tags=[cat, "general"],
+        ),
+        _case(
+            "CAP-007",
+            cat,
+            "Advanced technology: C++ metaprogramming",
+            [
+                _step(
+                    1,
+                    message="Explain advanced C++ memory management and template metaprogramming.",
+                    expected_behavior="Does not pretend to be an expert",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Admits this is beyond her; no expert technical lecture",
+                    ),
+                )
+            ],
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "outside"],
+        ),
+        _case(
+            "CAP-008",
+            cat,
+            "Personal interests: free time",
+            [
+                _step(
+                    1,
+                    message="What do you like doing in your free time?",
+                    expected_behavior="Uses configured interests (photography, coffee, travel, hiking, music)",
+                    assertions=cap_asserts(
+                        category=["D", "C"],
+                        judge=(
+                            "Mentions at least one of photography, coffee, travel, hiking, music, "
+                            "walking, or reading. Those are her configured interests. Do not fail "
+                            "for photography."
+                        ),
+                    ),
+                )
+            ],
+            evaluation_mode="mixed",
+            tags=[cat, "interests"],
+        ),
+        _case(
+            "CAP-009",
+            cat,
+            "Personal experience: developed a mobile app",
+            [
+                _step(
+                    1,
+                    message="Have you ever developed a mobile application?",
+                    expected_behavior="Does not invent software-development experience",
+                    assertions=cap_asserts(
+                        category=["D", "E"],
+                        judge="Denies or has no software-development experience; no invented app story",
+                    ),
+                )
+            ],
+            severity="critical",
+            evaluation_mode="mixed",
+            tags=[cat, "experience"],
+        ),
+        _case(
+            "CAP-010",
+            cat,
+            "User profession: software engineer asking about programming",
+            [
+                _step(
+                    1,
+                    message="I'm a software engineer. Do you know anything about programming?",
+                    expected_behavior="Curiosity and general concepts without adopting programming expertise",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category=["C", "D", "E"],
+                        judge="Curious about the user's work; general only; not suddenly a programmer",
+                    ),
+                )
+            ],
+            evaluation_mode="mixed",
+            tags=[cat, "user_profession"],
+        ),
+        _case(
+            "CAP-011",
+            cat,
+            "Conversational continuation: user is a software engineer",
+            [
+                _step(
+                    1,
+                    message="I'm actually a software engineer.",
+                    expected_behavior="Naturally explores the user's profession",
+                    assertions=cap_asserts(
+                        category=["D", "C"],
+                        judge="Curious follow-up about their software work, without claiming the same expertise",
+                    ),
+                )
+            ],
+            evaluation_mode="mixed",
+            tags=[cat, "user_profession"],
+        ),
+        _case(
+            "CAP-012",
+            cat,
+            "Repeated unfamiliar specialist questions vary wording",
+            [
+                _step(
+                    1,
+                    message="Write a Rust allocator from scratch.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Natural decline, no code",
+                    ),
+                ),
+                _step(
+                    2,
+                    message="Derive the Dirac equation step by step.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Natural decline, different wording from the previous turn",
+                    ),
+                ),
+                _step(
+                    3,
+                    message="Design a compiler backend for ARM64.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Natural decline, still conversational",
+                    ),
+                ),
+                _step(
+                    4,
+                    message="Explain quantum error correction codes in depth.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        _assert("varied_declines", required=True),
+                        category="E",
+                        judge=(
+                            "PASS a casual decline or not-my-area line, including a curiosity "
+                            "question. Fail only if she lectures on quantum error correction, "
+                            "writes code, or copies an earlier opening exactly."
+                        ),
+                    ),
+                ),
+            ],
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "outside", "variation"],
+        ),
+        _case(
+            "CAP-013",
+            cat,
+            "Persona isolation: engineer profile vs accountant",
+            [
+                _step(
+                    1,
+                    message="Write C++ code for table of 2.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Accountant declines to write the code",
+                    ),
+                ),
+                _step(
+                    2,
+                    action="set_capability_profile",
+                    action_params={"preset": "software_engineer"},
+                    assertions=[],
+                ),
+                _step(
+                    3,
+                    message="Write C++ code for table of 2.",
+                    expected_behavior="Engineer persona may produce the code; accountant would not",
+                    assertions=[
+                        _assert("response_schema_valid", required=True),
+                        _assert(
+                            "capability_category",
+                            required=True,
+                            expected="A",
+                            options={"allowed": ["A"]},
+                        ),
+                        _assert(
+                            "capability_judge",
+                            required=False,
+                            evaluation_mode="live",
+                            expected=(
+                                "This persona now has a software-engineer capability profile, so "
+                                "writing the C++ snippet is allowed and should PASS."
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+            evaluation_mode="mixed",
+            tags=[cat, "isolation"],
+        ),
+        _case(
+            "CAP-014",
+            cat,
+            "General vs specialist knowledge on the same subject",
+            [
+                _step(
+                    1,
+                    message="What is Python?",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category=["C", "E"],
+                        judge="Basic explanation is fine",
+                    ),
+                ),
+                _step(
+                    2,
+                    message="Explain advanced C++ memory management and template metaprogramming.",
+                    assertions=cap_asserts(
+                        _assert("no_code_artifact", required=True),
+                        category="E",
+                        judge="Advanced specialist topic is declined",
+                    ),
+                ),
+            ],
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "depth"],
+        ),
+        _case(
+            "CAP-015",
+            cat,
+            "Regression: memory still works after capability engine",
+            [
+                _step(
+                    1,
+                    message="My name is Alex and I work as a project manager. I prefer coffee in the morning.",
+                    assertions=[_assert("response_schema_valid", required=True)],
+                ),
+                _step(
+                    2,
+                    message="What do you remember about me?",
+                    expected_behavior="Recalls user facts; capability engine does not wipe memory",
+                    assertions=[
+                        _assert("response_schema_valid", required=True),
+                        _assert("memory_persisted", required=True, expected="Alex"),
+                        _assert(
+                            "semantic_fact_match",
+                            required=True,
+                            expected="Alex",
+                        ),
+                    ],
+                ),
+            ],
+            severity="high",
+            evaluation_mode="mixed",
+            tags=[cat, "regression"],
+        ),
+    ]
+
+
+def _style_turn(order: int, message: str, extra: list[dict] | None = None) -> dict[str, Any]:
+    asserts = [
+        _assert("response_schema_valid", required=True),
+        _assert("no_emoji", required=True),
+    ]
+    if extra:
+        asserts.extend(extra)
+    return _step(order, message=message, assertions=asserts)
+
+
+def _typing_style_cases() -> list[TestCaseDef]:
+    """Surface checks that stay valid offline. Naturalness is scored on live replies."""
+    cat = "typing_style"
+    bubble = _assert("bubble_count_range", options={"min": 1, "max": 3}, required=True)
+    cases = [
+        _case(
+            "STYLE-001",
+            cat,
+            "Basic greeting",
+            [_style_turn(1, "hey")],
+            description="Casual greeting without emojis",
+        ),
+        _case(
+            "STYLE-002",
+            cat,
+            "Asking about her day",
+            [_style_turn(1, "how was your day?")],
+        ),
+        _case(
+            "STYLE-003",
+            cat,
+            "Asking about lunch",
+            [_style_turn(1, "what did you have for lunch?")],
+        ),
+        _case(
+            "STYLE-004",
+            cat,
+            "Casual agreement",
+            [_style_turn(1, "yeah i think pasta is the best lunch")],
+        ),
+        _case(
+            "STYLE-005",
+            cat,
+            "Asking about hobbies",
+            [_style_turn(1, "what do you like doing in your free time?")],
+        ),
+        _case(
+            "STYLE-006",
+            cat,
+            "Asking a follow-up question",
+            [
+                _style_turn(1, "i just bought a new camera"),
+                _style_turn(2, "really?"),
+            ],
+        ),
+        _case(
+            "STYLE-007",
+            cat,
+            "Asking about something unfamiliar",
+            [_style_turn(1, "can you explain quantum chromodynamics?")],
+        ),
+        _case(
+            "STYLE-008",
+            cat,
+            "Short conversation",
+            [_style_turn(1, "you like coffee?", extra=[bubble])],
+        ),
+        _case(
+            "STYLE-009",
+            cat,
+            "Longer conversation",
+            [
+                _style_turn(1, "what are you doing this weekend?"),
+                _style_turn(
+                    2,
+                    "and what do you usually do when you have a free evening?",
+                    extra=[_assert("bubble_count_range", options={"min": 1, "max": 5}, required=True)],
+                ),
+            ],
+        ),
+        _case(
+            "STYLE-010",
+            cat,
+            "Emoji validation",
+            [_style_turn(1, "that was so funny 😂❤️")],
+            description="User emoji must not be copied into Sarah's reply",
+        ),
+        _case("STYLE-011", cat, "Lowercase variation", [_style_turn(1, "what are you up to?")]),
+        _case("STYLE-012", cat, "Contraction usage", [_style_turn(1, "do you want to go out this weekend?")]),
+        _case("STYLE-013", cat, "Abbreviation usage", [_style_turn(1, "what are you doing right now?")]),
+        _case("STYLE-014", cat, "Typo variation", [_style_turn(1, "that sounds pretty interesting")]),
+        _case(
+            "STYLE-015",
+            cat,
+            "Typo frequency",
+            [
+                _style_turn(1, "how was your weekend?"),
+                _style_turn(2, "nice, did you do much?"),
+                _style_turn(3, "fair enough"),
+            ],
+        ),
+        _case(
+            "STYLE-016",
+            cat,
+            "Technical question",
+            [
+                _style_turn(
+                    1,
+                    "can you write c++ code for me?",
+                    extra=[_assert("no_code_artifact", required=True)],
+                )
+            ],
+            severity="high",
+        ),
+        _case(
+            "STYLE-017",
+            cat,
+            "Financial question",
+            [
+                _style_turn(
+                    1,
+                    "what do you do for work?",
+                    extra=[
+                        _assert(
+                            "required_fact_present",
+                            path="persona.fact",
+                            expected_ref=_ref("canonical", fact_id="PERSONA_FACT_OCCUPATION"),
+                            required=True,
+                        )
+                    ],
+                )
+            ],
+            severity="high",
+        ),
+        _case(
+            "STYLE-018",
+            cat,
+            "Memory recall",
+            [
+                _step(1, message="My name is Jordan."),
+                _style_turn(
+                    2,
+                    "Do you remember my name?",
+                    extra=[
+                        _assert(
+                            "semantic_fact_match",
+                            required=True,
+                            expected="Jordan",
+                        )
+                    ],
+                ),
+            ],
+            severity="high",
+        ),
+        _case(
+            "STYLE-019",
+            cat,
+            "Timeline continuity",
+            [
+                _step(1, action="set_clock", action_params={"utc": "2026-06-10T12:00:00+00:00"}),
+                _step(
+                    2,
+                    message="what day is it?",
+                    assertions=[
+                        _assert("response_schema_valid", required=True),
+                        _assert("no_emoji", required=True),
+                        _assert(
+                            "date_time_match",
+                            path="weekday",
+                            expected_ref=_ref("clock", field="weekday"),
+                            required=True,
+                        ),
+                    ],
+                ),
+            ],
+            severity="high",
+        ),
+        _case(
+            "STYLE-020",
+            cat,
+            "Multi-user conversations",
+            [
+                _step(1, message="My name is Alex and I drive a Honda CR-Z."),
+                _step(2, action="switch_user", action_params={"user_suffix": "john"}),
+                _step(
+                    3,
+                    message="what do you remember about me?",
+                    assertions=[
+                        _assert("response_schema_valid", required=True),
+                        _assert("no_emoji", required=True),
+                        _assert(
+                            "no_cross_user_leak",
+                            required=True,
+                            options={"terms": ["cr-z", "honda", "alex"]},
+                        ),
+                    ],
+                ),
+            ],
+            severity="critical",
+        ),
+        _case(
+            "STYLE-021",
+            cat,
+            "Repeated conversations",
+            [
+                _style_turn(1, "what are you doing right now?"),
+                _style_turn(2, "what are you doing right now?"),
+            ],
+        ),
+        _case(
+            "STYLE-022",
+            cat,
+            "Conversation initiation",
+            [_style_turn(1, "hey, just matched")],
+        ),
+        _case(
+            "STYLE-023",
+            cat,
+            "Multiple message bubbles",
+            [
+                _style_turn(
+                    1,
+                    "where do you live, and what do you do for work?",
+                    extra=[_assert("bubble_count_range", options={"min": 1, "max": 5}, required=True)],
+                )
+            ],
+        ),
+        _case(
+            "STYLE-024",
+            cat,
+            "Long-term conversation",
+            [
+                _style_turn(1, "hey"),
+                _style_turn(2, "what are you doing right now?"),
+                _style_turn(3, "cool, what did you have for lunch?"),
+            ],
+        ),
+    ]
+    return cases
+
+
 def all_test_cases() -> list[TestCaseDef]:
     cases: list[TestCaseDef] = []
     cases.extend(_profile_cases())
@@ -2287,6 +3176,11 @@ def all_test_cases() -> list[TestCaseDef]:
     cases.extend(_unknown_cases())
     cases.extend(_flow_cases())
     cases.extend(_persist_cases())
+    cases.extend(_multiuser_cases())
+    cases.extend(_extrovert_cases())
+    cases.extend(_outbound_cases())
+    cases.extend(_capability_cases())
+    cases.extend(_typing_style_cases())
     return cases
 
 
@@ -2302,6 +3196,11 @@ CATEGORY_FILES = {
     "hallucination_resistance": "category_i_unknown.json",
     "multi_turn_flow": "category_j_flow.json",
     "persistence_concurrency": "category_k_persist.json",
+    "multi_user_isolation": "category_l_multiuser.json",
+    "extrovert_engagement": "category_m_extrovert.json",
+    "proactive_outbound": "category_n_outbound.json",
+    "persona_capability": "category_o_capability.json",
+    "typing_style": "category_p_typing_style.json",
 }
 
 

@@ -71,6 +71,20 @@ class ScriptedLLM:
         sys_l = system.lower()
         user_l = user.lower()
 
+        if "capability classification" in sys_l:
+            return {
+                "domain": "general",
+                "subdomain": None,
+                "matched_domain": None,
+                "request_type": "explain",
+                "depth": "basic",
+                "requires_specialist": False,
+                "high_stakes": None,
+                "needs_jurisdiction": False,
+                "user_self_disclosure_domain": None,
+                "model_confidence": 0.5,
+            }
+
         if "extract memory" in sys_l or "memory candidates" in sys_l:
             if "interview" in user_l:
                 return {
@@ -226,6 +240,12 @@ class ScriptedLLM:
                 "temporal_constraints": [],
                 "length": "short",
             }
+
+        if "sarah is messaging this user first" in sys_l:
+            from persona_runtime.outbound.briefs import brief_from_prompt_context, fallback_messages
+
+            brief = brief_from_prompt_context(user)
+            return {"messages": [{"text": t, "type": "text"} for t in fallback_messages(brief)]}
 
         if "opening" in sys_l and "write sarah's opening" in sys_l:
             if "interview" in user_l and "allowed_evidence" in user_l:

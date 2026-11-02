@@ -6,6 +6,14 @@ import json
 import re
 from typing import Any
 
+from persona_runtime.capability.policy import (
+    apply_capability_to_plan,
+    classification_payload,
+    decide,
+    should_assess,
+)
+from persona_runtime.capability.profile import load_capability_profile
+from persona_runtime.conversation.typing_style import load_typing_style
 from persona_runtime.config import Settings
 from persona_runtime.conversations.context import ConversationContextRepository
 from persona_runtime.conversations.repositories import ConversationRepository
@@ -24,10 +32,13 @@ from persona_runtime.graph.fact_tracker import (
     temporal_constraints_for_facts,
 )
 from persona_runtime.graph.bubbles import (
+    contains_emoji,
     messages_state_update,
     normalize_generated_messages,
     pack_message_dicts,
 )
+
+
 from persona_runtime.graph.grounding import (
     build_answer_plan,
     fallback_messages_from_answer_plan,
@@ -48,8 +59,12 @@ from persona_runtime.graph.understanding import (
     understanding_from_llm_dict,
 )
 from persona_runtime.conversation.engagement import (
+    fallback_opener,
+    is_robotic_opener,
     merge_engagement_into_policy,
+    opener_style,
     select_strategy,
+    signup_from_state,
 )
 from persona_runtime.conversation.topics import apply_topic_turn
 from persona_runtime.conversation.voice import select_tone
@@ -65,12 +80,19 @@ from persona_runtime.logging_utils import get_logger, log_event
 from persona_runtime.memory.consolidation import MemoryConsolidator
 from persona_runtime.memory.retrieval import MemoryRetriever
 from persona_runtime.memory.schemas import MemoryCandidate, MemoryExtractionResult
+from persona_runtime.memory.user_facts import extract_user_facts
 from persona_runtime.persona.repositories import PersonaRepository
 from persona_runtime.persona.subcategory_service import SubcategoryService
 from persona_runtime.prompts.registry import PromptRepository
 from persona_runtime.relationships.repositories import RelationshipRepository
 from persona_runtime.state.repositories import PersonaStateRepository
 from persona_runtime.user_context.provider import MinimalUserContextProvider
+from persona_runtime.conversation.personality import load_personality
+from persona_runtime.conversation.extrovert import apply_extrovert_layer
+from persona_runtime.outbound.briefs import fallback_messages as proactive_fallback_messages
+from persona_runtime.outbound.briefs import proactive_engagement
+from persona_runtime.conversation.topic_manager import UserTopicRepository
+from persona_runtime.memory.user_memory import UserMemoryService
 
 logger = get_logger(__name__)
 
@@ -90,8 +112,14 @@ class GraphServices:
         subcategory_service: SubcategoryService,
         prompt_repo: PromptRepository,
         llm: LLMClient,
-        user_context_provider: MinimalUserContextProvider | None = None,
+        user_context_provider: Any = None,
+        user_memory: UserMemoryService | None = None,
+        topic_repo: UserTopicRepository | None = None,
+        proactive_settings_repo: Any = None,
     ):
+        self.user_memory = user_memory
+        self.topic_repo = topic_repo
+        self.proactive_settings_repo = proactive_settings_repo
         self.settings = settings
         self.persona_repo = persona_repo
         self.state_repo = state_repo
@@ -104,6 +132,11 @@ class GraphServices:
         self.prompt_repo = prompt_repo
         self.llm = llm
         self.user_context_provider = user_context_provider or MinimalUserContextProvider()
+
+
+def _emit(state: dict[str, Any], texts: list[str]) -> dict[str, Any]:
+    """Pack bubbles and apply this persona's emoji rule. Does not rewrite spelling."""
+    return messages_state_update(texts, typing_style=state.get("typing_style"))
 
 
 def _prompt(svc: GraphServices, name: str) -> dict[str, Any]:
@@ -194,8 +227,28 @@ def hydrate_context(state: PersonaGraphState, svc: GraphServices) -> dict[str, A
         ],
     }
 
+    profile_card: list[dict[str, Any]] = []
+    coverage: dict[str, int] = {}
+    user_topics: list[dict[str, Any]] = []
+    try:
+        if svc.user_memory is not None:
+            profile_card = svc.user_memory.profile_card(persona_id, user_id)
+            coverage = svc.user_memory.coverage(persona_id, user_id)
+        if svc.topic_repo is not None:
+            user_topics = svc.topic_repo.list(user_id, persona_id)
+    except Exception as exc:  # noqa: BLE001
+        log_event(logger, "user_state_load_failed", error=str(exc), request_id=state.get("request_id"))
+
     current = persona_state.get("current_state") or {}
     return {
+        "user_profile_card": profile_card,
+        "memory_coverage": coverage,
+        "user_topics": user_topics,
+        "personality": load_personality(svc.persona_repo, persona_id),
+        "capability_profile": load_capability_profile(svc.persona_repo, persona_id),
+        "capability_decision": {},
+        "typing_style": load_typing_style(svc.persona_repo, persona_id),
+        "social_context": list(user_context.get("authorized_context") or []),
         "user_context": user_context,
         "persona_state": persona_state,
         "relationship_state": relationship,
@@ -217,7 +270,12 @@ def hydrate_context(state: PersonaGraphState, svc: GraphServices) -> dict[str, A
 
 
 def retrieve_memories(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
-    query = state.get("incoming_message") or "greeting hello"
+    brief = state.get("proactive_brief") or {}
+    query = state.get("incoming_message") or (
+        f"{brief.get('subject') or ''} {brief.get('topic') or ''}".strip()
+        if state.get("event_type") == "proactive_outreach"
+        else ""
+    ) or "greeting hello"
     try:
         memories = svc.memory_retriever.retrieve(
             persona_id=state["persona_id"],
@@ -234,6 +292,19 @@ def retrieve_memories(state: PersonaGraphState, svc: GraphServices) -> dict[str,
         }
 
     evidence_ids = [m["memory_id"] for m in memories if m.get("memory_id")]
+    for card in state.get("user_profile_card") or []:
+        mid = card.get("memory_id")
+        if mid and card.get("user_id") == state["user_id"] and mid not in evidence_ids:
+            evidence_ids.append(mid)
+    if state.get("event_type") == "proactive_outreach" and svc.user_memory is not None:
+        owned = {
+            m["memory_id"]
+            for m in svc.user_memory.list_for_user(state["persona_id"], state["user_id"])
+            if m.get("memory_id")
+        }
+        for mid in brief.get("evidence_memory_ids") or []:
+            if mid in owned and mid not in evidence_ids:
+                evidence_ids.append(mid)
     log_event(
         logger,
         "node_retrieve_memories",
@@ -260,6 +331,33 @@ def _with_questions(
 
 
 def interpret_turn(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
+    if state.get("event_type") == "proactive_outreach":
+        brief = state.get("proactive_brief") or {}
+        topic = str(brief.get("topic") or "proactive")
+        understanding = {
+            "speech_act": "proactive",
+            "intent": "initiate",
+            "topic": topic,
+            "requires_information": False,
+            "requires_question": False,
+            "user_emotion": "neutral",
+            "user_disclosures": [],
+            "needs_subcategory": False,
+            "subcategory_category": None,
+            "subcategory_topic": None,
+            "keywords": [topic],
+            "questions": [],
+        }
+        return {
+            "understanding": understanding,
+            "topic": topic,
+            "intent": "initiate",
+            "user_emotion": "neutral",
+            "needs_subcategory": False,
+            "subcategory_category": None,
+            "subcategory_topic": None,
+            "keywords": [topic],
+        }
     if state.get("event_type") == "conversation_start":
         understanding = {
             "speech_act": "greeting",
@@ -480,6 +578,52 @@ def evaluate_persona(state: PersonaGraphState, svc: GraphServices) -> dict[str, 
     return {"state_updates": {"_eval": notes}}
 
 
+def capability_assessment(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
+    """Classify the question's knowledge domain and decide the persona's capability policy."""
+    mode = should_assess(state)
+    if mode == "skip":
+        return {"capability_decision": {}}
+    profile = state.get("capability_profile") or {}
+    if mode == "persona":
+        from persona_runtime.capability.policy import persona_decision
+
+        decision = persona_decision(profile)
+        return {"capability_decision": decision}
+
+    errors = list(state.get("errors") or [])
+    raw: dict[str, Any] = {}
+    prompt = svc.prompt_repo.get_active("capability_classification")
+    if prompt:
+        try:
+            raw = svc.llm.complete_json(
+                system=prompt["system_prompt_template"],
+                user=json.dumps(classification_payload(state, profile), ensure_ascii=False),
+                temperature=float(prompt.get("temperature") or 0.1),
+            )
+            if not isinstance(raw, dict):
+                raw = {}
+        except Exception as exc:  # noqa: BLE001
+            raw = {}
+            errors.append(f"capability_classification_failed:{exc}")
+    decision = decide(
+        raw,
+        profile,
+        message=state.get("incoming_message") or "",
+        conversation_context=state.get("conversation_context") or {},
+        profile_card=list(state.get("user_profile_card") or []),
+    )
+    log_event(
+        logger,
+        "node_capability_assessment",
+        request_id=state.get("request_id"),
+        category=decision.get("category"),
+        strategy=decision.get("strategy"),
+        matched_domain=decision.get("matched_domain"),
+        reasons=",".join(decision.get("reasons") or []),
+    )
+    return {"capability_decision": decision, "errors": errors}
+
+
 def behaviour_decision(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("skip_response"):
         return {"behaviour_plan": {"primary_action": "none", "conversational_move": "WAIT"}}
@@ -517,6 +661,23 @@ def behaviour_decision(state: PersonaGraphState, svc: GraphServices) -> dict[str
         voice_tone=voice,
         event_type=state.get("event_type") or "user_message",
     )
+    personality = state.get("personality") or {}
+    if state.get("event_type") == "proactive_outreach":
+        engagement = proactive_engagement(state.get("proactive_brief") or {})
+    elif personality:
+        engagement = apply_extrovert_layer(
+            engagement,
+            user_id=state["user_id"],
+            persona_id=state["persona_id"],
+            understanding=understanding,
+            conversation_context=conv,
+            personality=personality,
+            user_topics=list(state.get("user_topics") or []),
+            profile_card=list(state.get("user_profile_card") or []),
+            coverage=state.get("memory_coverage") or {},
+            persona_repo=svc.persona_repo,
+            event_type=state.get("event_type") or "user_message",
+        )
 
     warmth = 0.55 + float(rel.get("affection", 0)) * 0.25
     warmth *= 0.7 if energy < 0.4 else 1.0
@@ -564,19 +725,31 @@ def behaviour_decision(state: PersonaGraphState, svc: GraphServices) -> dict[str
         ),
     }
 
+    if state.get("event_type") == "proactive_outreach":
+        baseline["primary_action"] = "initiate"
+        baseline["conversational_move"] = engagement.get("conversational_move") or "ASK"
+        baseline["allowed_moves"] = list(engagement.get("allowed_moves") or ["ASK", "SHARE", "REACT"])
+        baseline["ask_question"] = bool(engagement.get("should_ask_question"))
+        return {"behaviour_plan": baseline, "engagement_brief": engagement}
+
     if state.get("event_type") == "conversation_start":
+        engagement = {
+            **engagement,
+            "strategy": "answer_plus_followup",
+            "should_ask_question": True,
+            "conversational_move": "ASK",
+            "allowed_moves": ["ASK", "REACT"],
+            "followup_hint": "write a natural first-time opener in the style of their interest examples",
+            "topic": "opening",
+            "onboarding_step": "how_are_you",
+            "onboarding_active": True,
+        }
         baseline["primary_action"] = "greet"
-        # Engagement may prefer due-followup ASK; otherwise soft greeting
-        if engagement.get("strategy") == "continue_earlier_topic" and engagement.get(
-            "should_ask_question"
-        ):
-            baseline["conversational_move"] = "ASK"
-            baseline["allowed_moves"] = list(policy.get("allowed_moves") or ["ASK", "REACT"])
-            baseline["ask_question"] = True
-        else:
-            baseline["conversational_move"] = constrain_move("REACT", policy=policy)
-            baseline["allowed_moves"] = list(policy.get("allowed_moves") or ["REACT", "ASK", "ACKNOWLEDGE", "SHARE"])
-            baseline["ask_question"] = bool(engagement.get("should_ask_question"))
+        baseline["conversational_move"] = "ASK"
+        baseline["allowed_moves"] = ["ASK", "REACT"]
+        baseline["ask_question"] = True
+        baseline["engagement_strategy"] = engagement["strategy"]
+        baseline["engagement"] = engagement
         return {"behaviour_plan": baseline, "engagement_brief": engagement}
 
     prompt = _prompt(svc, "behaviour_decision")
@@ -946,6 +1119,18 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
         # Factual slots: never grow a follow-up question from engagement
         plan["should_ask_question"] = False
         plan = _attach_engagement(plan, state)
+        cap = state.get("capability_decision") or {}
+        if cap.get("forbidden_claims"):
+            plan["must_not_claim"] = list(
+                dict.fromkeys(list(plan.get("must_not_claim") or []) + list(cap["forbidden_claims"]))
+            )
+        if cap.get("category"):
+            plan["capability"] = {
+                "category": cap.get("category"),
+                "strategy": cap.get("strategy"),
+                "allowed_depth": cap.get("allowed_depth"),
+                "may_produce_artifacts": cap.get("may_produce_artifacts"),
+            }
         selected = select_persona_context({**state, "response_plan": plan, **disclosure})
         log_event(
             logger,
@@ -964,7 +1149,7 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
             "persona_state": persona_doc,
         }
 
-    if state.get("event_type") == "conversation_start":
+    if state.get("event_type") in ("conversation_start", "proactive_outreach"):
         allowed = state.get("allowed_evidence_ids") or []
         eng_ask = bool(engagement.get("should_ask_question"))
         plan = {
@@ -995,22 +1180,64 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
             "allowed_activity_mention": current.get("current_activity"),
             "response_strategy": strategy,
         }
-        if engagement.get("followup_hint"):
+        if engagement.get("followup_hint") and state.get("event_type") != "conversation_start":
             plan["talking_points"].append(str(engagement["followup_hint"]))
-        for mem in state.get("retrieved_memories") or []:
-            text = (mem.get("event_description") or mem.get("fact") or "").lower()
-            if "interview" in text and mem.get("memory_id") in allowed and eng_ask:
-                plan["memory_claims"].append(
-                    {
-                        "claim": "ask how the interview went",
-                        "evidence_memory_id": mem["memory_id"],
-                    }
-                )
-                plan["talking_points"].append("ask about the interview")
-                plan["should_ask_question"] = True
-                plan["conversational_move"] = "ASK"
-                break
+        if state.get("event_type") == "proactive_outreach":
+            brief = state.get("proactive_brief") or {}
+            plan["talking_points"] = ["Sarah is messaging first — open casually"] + list(
+                brief.get("talking_points") or []
+            ) + ([str(brief["hint"])] if brief.get("hint") else [])
+            plan["should_ask_question"] = True
+            plan["conversational_move"] = "ASK"
+            plan["introduce_new_topic"] = brief.get("proactive_type") == "new_topic"
+            plan["max_bubbles"] = int(brief.get("max_bubbles") or 2)
+            for mid in brief.get("evidence_memory_ids") or []:
+                if mid in allowed:
+                    plan["memory_claims"].append(
+                        {"claim": f"user told Sarah about {brief.get('subject') or 'this'}", "evidence_memory_id": mid}
+                    )
+                    plan["mention_previous_context"] = True
+            plan = _attach_engagement(plan, state)
+            selected = select_persona_context({**state, "response_plan": plan, **disclosure})
+            return {
+                "response_plan": plan,
+                "disclose_fact_ids": plan["disclose_fact_ids"],
+                "suppressed_fact_ids": plan["suppressed_fact_ids"],
+                "selected_context": selected,
+            }
+        if state.get("event_type") != "conversation_start":
+            for mem in state.get("retrieved_memories") or []:
+                text = (mem.get("event_description") or mem.get("fact") or "").lower()
+                if "interview" in text and mem.get("memory_id") in allowed and eng_ask:
+                    plan["memory_claims"].append(
+                        {
+                            "claim": "ask how the interview went",
+                            "evidence_memory_id": mem["memory_id"],
+                        }
+                    )
+                    plan["talking_points"].append("ask about the interview")
+                    plan["should_ask_question"] = True
+                    plan["conversational_move"] = "ASK"
+                    break
+        if state.get("event_type") == "conversation_start":
+            opener_name, opener_interests = signup_from_state(state)
+            style = opener_style(opener_name, opener_interests)
+            plan["should_ask_question"] = True
+            plan["conversational_move"] = "ASK"
+            plan["talking_points"] = [
+                "write a natural opener in this style",
+                "examples are tone only — write a fresh line fitted to their interests",
+                "do not say you mentioned or still into",
+                "do not describe your own morning, office, or work",
+                "do not ask where they live or what they do yet",
+            ]
+            plan["opener_style"] = style
+            plan["signup_interests"] = opener_interests
+            plan["onboarding_step"] = "how_are_you"
         plan = _attach_engagement(plan, state)
+        if state.get("event_type") == "conversation_start":
+            plan["should_ask_question"] = True
+            plan["conversational_move"] = "ASK"
         selected = select_persona_context({**state, "response_plan": plan, **disclosure})
         return {
             "response_plan": plan,
@@ -1169,6 +1396,7 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
 
     plan = filter_ungrounded_claims(plan, list(state.get("allowed_evidence_ids") or []))
     plan = _attach_engagement(plan, state)
+    plan = apply_capability_to_plan(plan, state.get("capability_decision"), engagement)
     selected = select_persona_context({**state, "response_plan": plan})
     return {
         "response_plan": plan,
@@ -1198,34 +1426,68 @@ def generate_response(state: PersonaGraphState, svc: GraphServices) -> dict[str,
         current = (state.get("persona_state") or {}).get("current_state") or {}
         activity = current.get("current_activity") or "busy"
         phrases = {
-            "meeting": "I'm in a meeting — I'll text you when I'm out.",
-            "gym": "At the gym right now — I'll reply properly when I'm done.",
-            "deep_work": "Just finishing something for work. Give me a bit.",
-            "with_friends": "Out with friends — I'll message you later.",
-            "sleeping": "Hey, I'll get back to you properly when I'm up.",
-            "cooking": "Cooking at the moment — I'll reply properly in a bit.",
-            "commuting": "Commuting — talk properly in a bit.",
+            "meeting": "im in a meeting, i'll text you when im out",
+            "gym": "at the gym rn, i'll reply properly when im done",
+            "deep_work": "just finishing something for work, give me a bit",
+            "with_friends": "out with friends, i'll message you later",
+            "sleeping": "hey, i'll get back to you properly when im up",
+            "cooking": "cooking atm, i'll reply properly in a bit",
+            "commuting": "on the way, talk properly in a bit",
         }
-        reply = phrases.get(activity, "Bit tied up — I'll message you properly soon.")
-        return messages_state_update([reply])
+        reply = phrases.get(activity, "bit tied up, i'll message you properly soon")
+        return _emit(state, [reply])
 
-    prompt_name = "opening_generation" if state.get("event_type") == "conversation_start" else "response_generation"
-    prompt = _prompt(svc, prompt_name)
+    event_type = state.get("event_type")
+    proactive = event_type == "proactive_outreach"
+    if proactive:
+        prompt_name = "proactive_generation"
+    elif event_type == "conversation_start":
+        prompt_name = "opening_generation"
+    else:
+        prompt_name = "response_generation"
     selected = state.get("selected_context") or select_persona_context(state)
     try:
+        prompt = svc.prompt_repo.get_active(prompt_name) if proactive else _prompt(svc, prompt_name)
+        prompt = prompt or _prompt(svc, "opening_generation")
         raw_texts = svc.llm.complete_as_messages(
             system=prompt["system_prompt_template"],
             user=build_prompt_context({**state, "selected_context": selected}, svc.settings),
             temperature=float(prompt.get("temperature") or 0.7),
         )
     except Exception as exc:  # noqa: BLE001
+        if proactive:
+            return _emit(state, proactive_fallback_messages(state.get("proactive_brief") or {}))
+        if event_type == "conversation_start":
+            name, interests = signup_from_state(state)
+            return _emit(state, fallback_opener(opener_style(name, interests), state.get("user_id")))
         return {
             "generated_response": "",
             "generated_messages": [],
             "errors": list(state.get("errors") or []) + [f"generation_failed:{exc}"],
         }
     texts = normalize_generated_messages(raw_texts, state)
-    return messages_state_update(texts)
+    if event_type == "conversation_start" and (
+        not any(t.strip() for t in texts) or is_robotic_opener(" ".join(texts))
+    ):
+        name, interests = signup_from_state(state)
+        texts = fallback_opener(opener_style(name, interests), state.get("user_id"))
+    if proactive:
+        texts = _cap_proactive_bubbles(texts, state)
+    return _emit(state, texts)
+
+
+def _cap_proactive_bubbles(texts: list[str], state: PersonaGraphState) -> list[str]:
+    """1..max_bubbles bubbles and at most one question across the whole burst."""
+    brief = state.get("proactive_brief") or {}
+    max_bubbles = max(1, int(brief.get("max_bubbles") or 2))
+    texts = [t for t in texts if t and t.strip()]
+    if not texts:
+        return proactive_fallback_messages(brief)
+    if len(texts) > max_bubbles:
+        texts = texts[: max_bubbles - 1] + [" ".join(texts[max_bubbles - 1 :])]
+    if sum(t.count("?") for t in texts) > 1:
+        return proactive_fallback_messages(brief)
+    return texts
 
 
 def recall_claim_check(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
@@ -1239,7 +1501,7 @@ def recall_claim_check(state: PersonaGraphState, svc: GraphServices) -> dict[str
     incoming = (state.get("incoming_message") or "").lower()
     asks_memory = any(p in incoming for p in ["do you remember", "remember my", "remember when"])
     if asks_memory and not allowed:
-        return messages_state_update([FALLBACK_NO_MEMORY])
+        return _emit(state, [FALLBACK_NO_MEMORY])
 
     if reply_has_recall_language(reply) and not has_grounded_claims and not allowed:
         try:
@@ -1251,17 +1513,17 @@ def recall_claim_check(state: PersonaGraphState, svc: GraphServices) -> dict[str
             )
             repaired = "\n".join(repaired_texts)
             if reply_has_recall_language(repaired) and not allowed:
-                return messages_state_update([FALLBACK_NO_MEMORY])
-            return messages_state_update(normalize_generated_messages(repaired_texts, state))
+                return _emit(state, [FALLBACK_NO_MEMORY])
+            return _emit(state, normalize_generated_messages(repaired_texts, state))
         except Exception:
-            return messages_state_update([FALLBACK_NO_MEMORY])
+            return _emit(state, [FALLBACK_NO_MEMORY])
 
     if reply_has_recall_language(reply) and not has_grounded_claims:
         if asks_memory and not any(
             tokenize_overlap(incoming, m)
             for m in (state.get("retrieved_memories") or [])
         ):
-            return messages_state_update([FALLBACK_NO_MEMORY])
+            return _emit(state, [FALLBACK_NO_MEMORY])
     return {}
 
 
@@ -1269,6 +1531,8 @@ def _fallback_messages_update(state: PersonaGraphState) -> dict[str, Any]:
     """Deterministic fallback as bubble list (split when multi-target)."""
     from persona_runtime.graph.reality import world_state_fallback_messages
 
+    if state.get("event_type") == "proactive_outreach":
+        return _emit(state, proactive_fallback_messages(state.get("proactive_brief") or {}))
     understanding = state.get("understanding") or {}
     plan = state.get("response_plan") or {}
     q_target = understanding.get("question_target") or plan.get("question_target") or "none"
@@ -1282,7 +1546,7 @@ def _fallback_messages_update(state: PersonaGraphState) -> dict[str, Any]:
 
         texts = fallback_messages_from_answer_plan(plan)
         if texts:
-            return messages_state_update(texts)
+            return _emit(state, texts)
     if len(q_targets) > 1:
         current = (state.get("persona_state") or {}).get("current_state") or {}
         world = plan.get("world_state") or build_world_state(current)
@@ -1293,15 +1557,21 @@ def _fallback_messages_update(state: PersonaGraphState) -> dict[str, Any]:
             last_world=last_world if isinstance(last_world, dict) else {},
             targets=q_targets,
         )
-        return messages_state_update(texts)
+        return _emit(state, texts)
     fallback = deterministic_fallback_reply(state)
-    return messages_state_update([fallback])
+    return _emit(state, [fallback])
 
 
 def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("skip_response"):
         return {}
     reply = state.get("generated_response") or ""
+    style = state.get("typing_style") or {}
+    stripped: dict[str, Any] | None = None
+    if style.get("emoji_enabled") is False and contains_emoji(reply):
+        pieces = [p for p in reply.split("\n") if p.strip()] or [reply]
+        stripped = _emit(state, pieces)
+        reply = stripped.get("generated_response") or ""
     result = validate_response(state, reply)
     attempts = int(state.get("validation_attempts") or 0)
 
@@ -1321,11 +1591,14 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
             active_event_id=current.get("active_event_id"),
             validation_ok=True,
         )
-        return {
+        payload: dict[str, Any] = {
             "validation": result.to_dict(),
             "validation_feedback": [],
-            "generated_messages": msgs,
+            "generated_messages": (stripped or {}).get("generated_messages") or msgs,
         }
+        if stripped is not None:
+            payload["generated_response"] = reply
+        return payload
 
     log_event(
         logger,
@@ -1340,7 +1613,7 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
         fallback = packed["generated_response"]
         retry = validate_response(state, fallback)
         if not retry.ok:
-            packed = messages_state_update(["Sounds good 🙂"])
+            packed = _emit(state, ["yeah sounds good"])
         return {
             **packed,
             "validation": {"ok": True, "failures": result.failures, "repaired": "fallback"},
@@ -1369,7 +1642,7 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
         check = validate_response(state, repaired)
         if check.ok:
             return {
-                **messages_state_update(repaired_texts),
+                **_emit(state, repaired_texts),
                 "validation": check.to_dict() | {"repaired": True},
                 "validation_feedback": [],
                 "validation_attempts": attempts + 1,
@@ -1437,7 +1710,20 @@ def persist_turn(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]
                 m.get("message_id") for m in (state.get("pending_messages") or [])
             ],
             "bubble_count": len(bubbles),
+            "capability_decision": state.get("capability_decision") or {},
         }
+        brief = state.get("proactive_brief") or {}
+        proactive = state.get("event_type") == "proactive_outreach"
+        extra: dict[str, Any] = {}
+        if proactive:
+            extra = {
+                "message_type": "proactive",
+                "proactive_type": brief.get("proactive_type"),
+                "outbound_id": brief.get("outbound_id"),
+            }
+            base_meta["proactive_brief"] = {
+                k: brief.get(k) for k in ("proactive_type", "topic", "subject", "outbound_id")
+            }
         for index, bubble in enumerate(bubbles):
             text = (
                 str(bubble.get("text") or "").strip()
@@ -1452,9 +1738,19 @@ def persist_turn(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]
                 content=text,
                 metadata={**base_meta, "bubble_index": index},
                 status="answered",
+                **extra,
             )
             assistant_message_ids.append(msg["message_id"])
         assistant_message_id = assistant_message_ids[0] if assistant_message_ids else None
+
+    if state.get("event_type") == "proactive_outreach":
+        return {
+            "assistant_message_id": assistant_message_id,
+            "assistant_message_ids": assistant_message_ids,
+            "generated_response": reply,
+            "generated_messages": bubbles,
+            "relationship_updates": {},
+        }
 
     # Gradual relationship update
     meaningful = False
@@ -1498,7 +1794,9 @@ def persist_turn(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]
 def update_conversation_context(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("event_type") == "message_seen":
         return {}
-    if state.get("event_type") == "conversation_start" and not (state.get("generated_response") or ""):
+    if state.get("event_type") in ("conversation_start", "proactive_outreach") and not (
+        state.get("generated_response") or ""
+    ):
         return {}
 
     understanding = state.get("understanding") or {}
@@ -1629,8 +1927,22 @@ def update_conversation_context(state: PersonaGraphState, svc: GraphServices) ->
         "response_history": response_history,
         "recent_moves": recent_moves,
     }
+    cap_dec = state.get("capability_decision") or {}
+    if cap_dec.get("category") == "E" and reply:
+        opening = reply.strip().split("\n")[0].strip()[:80]
+        prev = list(conv.get("recent_capability_declines") or [])
+        if opening:
+            prev.append(opening)
+        updates["recent_capability_declines"] = prev[-5:]
     if topic_updates.get("proactive_opt_out"):
         updates["proactive_opt_out"] = True
+        if svc.proactive_settings_repo is not None:
+            try:
+                svc.proactive_settings_repo.opt_out(
+                    state["user_id"], state["persona_id"], reason="asked_in_conversation"
+                )
+            except Exception as exc:  # noqa: BLE001
+                log_event(logger, "proactive_opt_out_failed", error=str(exc))
     q_target = understanding.get("question_target") or plan.get("question_target")
     if q_target and q_target != "none":
         updates["last_question_target"] = q_target
@@ -1656,6 +1968,30 @@ def update_conversation_context(state: PersonaGraphState, svc: GraphServices) ->
         # Clear when meal answered but no open event
         pass
 
+    engagement = state.get("engagement_brief") or (state.get("behaviour_plan") or {}).get("engagement") or {}
+    if state.get("event_type") == "conversation_start" and reply:
+        updates["onboarding_step"] = "how_are_you"
+        _opener_name, signup_interests = signup_from_state(state)
+        if signup_interests:
+            updates["signup_interests"] = signup_interests
+    elif state.get("event_type") == "user_message" and engagement.get("onboarding_step") in {
+        "lives_in",
+        "occupation",
+        "hobby",
+        "done",
+    }:
+        updates["onboarding_step"] = engagement["onboarding_step"]
+    if state.get("event_type") == "user_message":
+        left = int(conv.get("sarah_led_turns_left") or 0)
+        if conv.get("session_mode") == "sarah_led":
+            left = max(0, left - 1)
+            updates["sarah_led_turns_left"] = left
+            if left == 0:
+                updates["session_mode"] = "normal"
+        if engagement.get("discovery_target"):
+            updates["last_discovery_turn"] = len(response_history)
+    _record_user_topics(state, svc, conv, topic, updates)
+
     updated = svc.conversation_context_repo.apply_turn_update(
         conversation_id=state["conversation_id"],
         persona_id=state["persona_id"],
@@ -1663,6 +1999,40 @@ def update_conversation_context(state: PersonaGraphState, svc: GraphServices) ->
         updates=updates,
     )
     return {"conversation_context": updated}
+
+
+def _record_user_topics(
+    state: PersonaGraphState,
+    svc: GraphServices,
+    conv: dict[str, Any],
+    topic: str,
+    updates: dict[str, Any],
+) -> None:
+    """Persist per-user topic interest/depth and declined topics across conversations."""
+    if svc.topic_repo is None:
+        return
+    from persona_runtime.conversation.topic_manager import TOPIC_CATALOGUE, classify_topic
+
+    user_id, persona_id = state["user_id"], state["persona_id"]
+    try:
+        incoming = state.get("incoming_message") or ""
+        if state.get("event_type") == "user_message" and incoming:
+            bucket = topic if topic in TOPIC_CATALOGUE else classify_topic(f"{topic} {incoming}")
+            prev = conv.get("current_topic")
+            prev_bucket = prev if prev in TOPIC_CATALOGUE else classify_topic(prev or "")
+            if bucket:
+                svc.topic_repo.record_turn(
+                    user_id, persona_id, bucket, user_text=incoming, previous_topic=prev_bucket
+                )
+        already = set(conv.get("declined_topics") or [])
+        for declined in updates.get("declined_topics") or []:
+            if declined in already:
+                continue
+            bucket = declined if declined in TOPIC_CATALOGUE else classify_topic(str(declined))
+            if bucket:
+                svc.topic_repo.mark_declined(user_id, persona_id, bucket)
+    except Exception as exc:  # noqa: BLE001
+        log_event(logger, "user_topic_update_failed", error=str(exc), request_id=state.get("request_id"))
 
 
 def extract_memories(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
@@ -1684,7 +2054,7 @@ def extract_memories(state: PersonaGraphState, svc: GraphServices) -> dict[str, 
             user=json.dumps(payload),
             temperature=float(prompt.get("temperature") or 0.2),
         )
-        result = MemoryExtractionResult.model_validate(data)
+        result = MemoryExtractionResult.model_validate_lenient(data)
         # Attach evidence from this turn when the model omits ids
         for c in result.candidates:
             if c.memory_type != "no_memory" and not c.source_message_ids and evidence_ids:
@@ -1692,13 +2062,16 @@ def extract_memories(state: PersonaGraphState, svc: GraphServices) -> dict[str, 
         # Merge heuristic disclosures if LLM missed them
         heuristic = _heuristic_extraction(state)
         existing_keys = {
-            (c.memory_type, c.subject, c.predicate, c.object)
+            (c.memory_type, c.subject, c.predicate, str(c.object or "").lower())
             for c in result.candidates
         }
         for h in heuristic.candidates:
-            key = (h.memory_type, h.subject, h.predicate, h.object)
+            key = (h.memory_type, h.subject, h.predicate, str(h.object or "").lower())
             if h.memory_type != "no_memory" and key not in existing_keys:
                 result.candidates.append(h)
+                existing_keys.add(key)
+        if any(c.memory_type != "no_memory" for c in result.candidates):
+            result.candidates = [c for c in result.candidates if c.memory_type != "no_memory"]
     except Exception:
         result = _heuristic_extraction(state)
 
@@ -1829,7 +2202,7 @@ def _heuristic_extraction(state: PersonaGraphState) -> MemoryExtractionResult:
                 is_correction=correction or "call me" in lower,
             )
         )
-    if re.search(r"\b(?:honda|cr-z)\b", lower) and not any(c.predicate == "owns_car" for c in candidates):
+    if re.search(r"\bcr-?z\b", lower) and not any(c.predicate == "owns_car" for c in candidates):
         candidates.append(
             MemoryCandidate(
                 memory_type="semantic",
@@ -1899,6 +2272,23 @@ def _heuristic_extraction(state: PersonaGraphState) -> MemoryExtractionResult:
                 source_message_ids=ids,
             )
         )
+
+    for fact in extract_user_facts(text, ids):
+        if fact.predicate == "name" and any(c.predicate == "name" for c in candidates):
+            continue
+        if fact.predicate == "owns_car" and any(c.predicate == "owns_car" for c in candidates):
+            continue
+        if fact.interest_status == "former":
+            candidates = [
+                c
+                for c in candidates
+                if not (c.predicate == fact.predicate and str(c.object or "").lower() == str(fact.object or "").lower())
+            ]
+        if not any(
+            c.predicate == fact.predicate and str(c.object or "").lower() == str(fact.object or "").lower()
+            for c in candidates
+        ):
+            candidates.append(fact)
 
     if not candidates:
         candidates.append(MemoryCandidate(memory_type="no_memory", importance=0.0, confidence=1.0))

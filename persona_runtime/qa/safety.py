@@ -59,6 +59,13 @@ def assert_qa_user_id(user_id: str) -> None:
         raise QASafetyError(f"Refusing to use protected user_id: {user_id}")
 
 
+def assert_qa_app_user(user_doc: dict[str, Any] | None) -> None:
+    """QA may only create, mutate or delete AppUsers whose id is qa-prefixed."""
+    if not user_doc:
+        raise QASafetyError("Refusing QA operation on a missing AppUser")
+    assert_qa_user_id(str(user_doc.get("user_id") or ""))
+
+
 def assert_cleanup_filter(filter_doc: dict[str, Any]) -> None:
     """Ensure delete filters only target qa-prefixed ids."""
     for key in ("persona_id", "user_id", "test_user_id"):

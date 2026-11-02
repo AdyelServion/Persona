@@ -221,6 +221,7 @@ class QARepository:
             "retrieved_memory_ids": doc.get("retrieved_memory_ids") or [],
             "stored_memory_ids": doc.get("stored_memory_ids") or [],
             "assertion_results": doc.get("assertion_results") or [],
+            "capability_decision": doc.get("capability_decision") or {},
             "created_at": utcnow(),
         }
         self.step_results.insert_one(step_result)
@@ -250,6 +251,11 @@ class QARepository:
 
     def list_results(self, test_run_id: str) -> list[dict[str, Any]]:
         return list(self.results.find({"test_run_id": test_run_id}).sort("test_key", 1))
+
+    def list_step_results(self, test_result_id: str) -> list[dict[str, Any]]:
+        return list(
+            self.step_results.find({"test_result_id": test_result_id}).sort("step_order", 1)
+        )
 
     def list_issues(self, test_run_id: str) -> list[dict[str, Any]]:
         return list(self.issues.find({"test_run_id": test_run_id}).sort("severity", 1))

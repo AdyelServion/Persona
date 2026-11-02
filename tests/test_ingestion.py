@@ -36,6 +36,15 @@ def test_canonical_facts_seeded(ingested_db):
     assert ("hometown", "Sheffield") in objects
 
 
+def test_capability_profile_seeded(ingested_db):
+    repo = PersonaRepository(ingested_db)
+    doc = repo.get_capability_profile("sarah_taylor_001")
+    assert doc and doc.get("profile", {}).get("profession") == "Management Accountant"
+    domains = {d["domain_id"] for d in doc["profile"]["domains"]}
+    assert "variance_analysis" in domains
+    assert "programming" in domains
+
+
 def test_conflict_detection_manchester_london(ingested_db):
     repo = PersonaRepository(ingested_db)
     facts = repo.list_canonical_facts("sarah_taylor_001")

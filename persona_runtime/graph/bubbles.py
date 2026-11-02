@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from persona_runtime.graph.grounding import fallback_messages_from_answer_plan
@@ -9,6 +10,65 @@ from persona_runtime.graph.reality import (
     build_world_state,
     world_state_fallback_messages,
 )
+
+
+_DASH_PAUSE = re.compile(r"\s*(?:—|–)\s*")
+_DOUBLE_HYPHEN_PAUSE = re.compile(r"\s+--\s+")
+# Pictographs, flags, dingbats used as emoji, variation selectors, and ZWJ joins.
+_EMOJI = re.compile(
+    "["
+    "\U0001F1E6-\U0001F1FF"
+    "\U0001F300-\U0001FAFF"
+    "\U00002600-\U000027BF"
+    "\U0001F000-\U0001F02F"
+    "\U0001F0A0-\U0001F0FF"
+    "\U00002300-\U000023FF"
+    "\U00002B00-\U00002BFF"
+    "\U0000FE00-\U0000FE0F"
+    "\U0000200D"
+    "\U000020E3"
+    "\U0001F3FB-\U0001F3FF"
+    "]+",
+    flags=re.UNICODE,
+)
+
+
+def contains_emoji(text: str) -> bool:
+    return bool(_EMOJI.search(text or ""))
+
+
+def strip_emojis(text: str) -> str:
+    """Remove emoji characters only. Spelling and punctuation stay as generated."""
+    cleaned = _EMOJI.sub("", text or "")
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\s+([,.!?])", r"\1", cleaned)
+    return cleaned.strip()
+
+
+def apply_emoji_policy(texts: list[str], typing_style: dict[str, Any] | None) -> list[str]:
+    """Drop emoji when this persona's style disables them. Empty bubbles go away."""
+    if not typing_style or typing_style.get("emoji_enabled") is not False:
+        return [t for t in texts if t and str(t).strip()]
+    kept: list[str] = []
+    for item in texts:
+        cleaned = strip_emojis(item)
+        if cleaned:
+            kept.append(cleaned)
+    return kept
+
+
+def humanize_text(text: str) -> str:
+    """Texting punctuation. Em dashes and spaced double hyphens become commas."""
+    cleaned = _DASH_PAUSE.sub(", ", text or "")
+    cleaned = _DOUBLE_HYPHEN_PAUSE.sub(", ", cleaned)
+    cleaned = re.sub(r"\s+,", ",", cleaned)
+    cleaned = re.sub(r"(?:,\s*){2,}", ", ", cleaned)
+    cleaned = re.sub(r"\s{2,}", " ", cleaned).strip()
+    return cleaned.lstrip(",").strip()
+
+
+def _plain(texts: list[str]) -> list[str]:
+    return [t for t in (humanize_text(item) for item in texts) if t]
 
 
 def extract_texts_from_llm_payload(data: dict[str, Any]) -> list[str]:
@@ -146,28 +206,33 @@ def normalize_generated_messages(
         if len(cleaned) == multi_n or (
             len(questions) > 1 and len(cleaned) == len(questions)
         ):
-            return cleaned[:5]
+            return _plain(cleaned[:5])
         if plan.get("answers"):
-            return fallback_messages_from_answer_plan(plan)[:5]
+            return _plain(fallback_messages_from_answer_plan(plan)[:5])
         primary = targets[0] if targets else "none"
-        return world_state_fallback_messages(
-            primary,
-            world=world if isinstance(world, dict) else build_world_state(current),
-            last_world=last_world if isinstance(last_world, dict) else {},
-            targets=targets,
-        )[:5]
+        return _plain(
+            world_state_fallback_messages(
+                primary,
+                world=world if isinstance(world, dict) else build_world_state(current),
+                last_world=last_world if isinstance(last_world, dict) else {},
+                targets=targets,
+            )[:5]
+        )
 
     if not cleaned:
         if plan.get("answers"):
-            return fallback_messages_from_answer_plan(plan)[:3]
+            return _plain(fallback_messages_from_answer_plan(plan)[:3])
         return cleaned
 
     # Single answer: keep model bubbles (natural continuation), cap at 3
-    return cleaned[:3]
+    return _plain(cleaned[:3])
 
 
-def messages_state_update(texts: list[str]) -> dict[str, Any]:
-    packed = pack_message_dicts(texts)
+def messages_state_update(
+    texts: list[str],
+    typing_style: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    packed = pack_message_dicts(apply_emoji_policy(_plain(list(texts)), typing_style))
     return {
         "generated_messages": packed,
         "generated_response": join_messages(packed),

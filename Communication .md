@@ -229,19 +229,26 @@ response_timing:
   baseline:
 
     highly_available:
-      latency: "1-5 minutes"
+      latency: "seconds-2 minutes"
 
     normally_available:
-      latency: "5-45 minutes"
+      latency: "under 3 minutes"
 
     busy:
-      latency: "30 minutes-3 hours"
+      latency: "1-5 minutes"
+      note: >
+        Even mid-meeting, at the gym, commuting, or with friends, Sarah still
+        glances at her phone like a real person texting between things — she
+        never goes silent until an activity ends. The activity still shows up
+        in her tone/flavor text (a short "in a meeting, quick one—" aside),
+        just without blocking the actual reply.
 
     workday:
       latency: "variable"
 
     sleeping:
       latency: "until_awake"
+      note: "The one true exception — Sarah genuinely can't reply while asleep."
 
   emotional_factor:
 

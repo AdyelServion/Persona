@@ -7,31 +7,104 @@
   <link rel="stylesheet" href="/static/chat/styles.css" />
 </head>
 <body>
-  <div class="app">
-    <header class="header">
-      <div class="avatar" aria-hidden="true">ST</div>
-      <div class="header-text">
-        <h1>{{ persona_name }}</h1>
-        <p class="subtitle">Fictional virtual human · persistent persona</p>
+  <div class="shell">
+    <aside class="sidebar" aria-label="People chatting with Sarah">
+      <div class="sidebar-head">
+        <span class="sidebar-title">Chats</span>
+        <button type="button" id="newChatBtn" class="btn-primary">+ New chat</button>
       </div>
-      <div class="header-meta">
-        <label class="countdown-toggle" title="Show approximate reply countdown">
-          <input type="checkbox" id="countdownToggle" checked />
-          <span>Countdown</span>
+      <ul id="userList" class="user-list"></ul>
+      <p class="sidebar-note">Each chat is a separate person with their own private memory.</p>
+    </aside>
+
+    <div class="app">
+      <header class="header">
+        <div class="avatar" aria-hidden="true">ST</div>
+        <div class="header-text">
+          <h1>{{ persona_name }}</h1>
+          <p class="subtitle">AI persona · <span id="activeUserLabel">not signed in</span></p>
+          <p class="user-id-line" id="userIdLine" hidden>
+            <code id="activeUserIdText"></code>
+            <button type="button" id="copyUserId" class="btn-ghost">Copy</button>
+          </p>
+        </div>
+        <div class="header-meta">
+          <div class="header-actions">
+            <label class="countdown-toggle" title="Show approximate reply countdown">
+              <input type="checkbox" id="countdownToggle" checked />
+              <span>Countdown</span>
+            </label>
+            <button type="button" id="settingsBtn" class="btn-ghost" title="Messaging settings" disabled>⚙</button>
+          </div>
+          <div id="status" class="status">Connecting…</div>
+        </div>
+      </header>
+
+      <div id="settingsPanel" class="popover" hidden>
+        <h2>When Sarah may message first</h2>
+        <label class="row">
+          <input type="checkbox" id="setEnabled" />
+          <span>Allow Sarah to start conversations (max 1/day, 3/week)</span>
         </label>
-        <div id="status" class="status">Connecting…</div>
+        <div class="row">
+          <span>Quiet hours</span>
+          <input type="time" id="setQuietStart" />
+          <span>to</span>
+          <input type="time" id="setQuietEnd" />
+        </div>
+        <div class="row">
+          <button type="button" id="setPause" class="btn-ghost">Pause for 24h</button>
+          <button type="button" id="setResume" class="btn-ghost">Resume</button>
+          <span id="setPausedNote" class="muted"></span>
+        </div>
+        <div class="row end">
+          <button type="button" id="setClose" class="btn-ghost">Close</button>
+          <button type="button" id="setSave" class="btn-primary">Save</button>
+        </div>
       </div>
-    </header>
 
-    <main id="messages" class="messages" aria-live="polite"></main>
+      <main id="messages" class="messages" aria-live="polite"></main>
 
-    <div id="error" class="error" hidden></div>
+      <div id="error" class="error" hidden></div>
 
-    <form id="composer" class="composer">
-      <textarea id="input" rows="1" placeholder="Message Sarah…" maxlength="4000" required></textarea>
-      <button type="submit" id="send" disabled>Send</button>
+      <form id="composer" class="composer">
+        <textarea id="input" rows="1" placeholder="Message Sarah…" maxlength="4000" required></textarea>
+        <button type="submit" id="send" disabled>Send</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="newChatModal" class="modal" hidden>
+    <form id="newChatForm" class="modal-card">
+      <h2>Start a new chat</h2>
+      <p class="disclosure">
+        Sarah is an <strong>AI persona</strong>, not a real person. Sarah remembers this profile
+        wherever you open it with the same user id. Save the id to use it on another device.
+      </p>
+      <label class="field">
+        <span>Already have a chat? Paste your user id</span>
+        <input type="text" id="ncUserId" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Paste a user id to open that chat" />
+      </label>
+      <label class="field">
+        <span>Your name</span>
+        <input type="text" id="ncName" maxlength="60" autocomplete="given-name" />
+      </label>
+      <label class="field">
+        <span>A few interests (optional, comma separated)</span>
+        <input type="text" id="ncInterests" maxlength="200" placeholder="e.g. photography, football" />
+      </label>
+      <label class="row">
+        <input type="checkbox" id="ncOptIn" />
+        <span>Sarah may message me first sometimes (you can turn this off any time)</span>
+      </label>
+      <div class="row end">
+        <button type="button" id="ncCancel" class="btn-ghost">Cancel</button>
+        <button type="submit" id="ncCreate" class="btn-primary">Start chatting</button>
+      </div>
+      <div id="ncError" class="error" hidden></div>
     </form>
   </div>
+
   <script src="/static/chat/app.js"></script>
 </body>
 </html>

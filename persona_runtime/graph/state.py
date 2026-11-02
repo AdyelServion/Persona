@@ -9,7 +9,7 @@ class PersonaGraphState(TypedDict, total=False):
     persona_id: str
     user_id: str
     conversation_id: str
-    event_type: Literal["user_message", "conversation_start", "message_seen"]
+    event_type: Literal["user_message", "conversation_start", "message_seen", "proactive_outreach"]
     incoming_message: str
     pending_messages: list[dict[str, Any]]
     response_strategy: str
@@ -60,3 +60,16 @@ class PersonaGraphState(TypedDict, total=False):
     clock_snapshot: dict[str, Any]
     timeline_transitions: list[dict[str, Any]]
     state_version: int
+    # Multi-user social persona
+    user_profile_card: list[dict[str, Any]]
+    memory_coverage: dict[str, int]
+    user_topics: list[dict[str, Any]]
+    personality: dict[str, Any]
+    discovery: dict[str, Any]
+    self_disclosure: dict[str, Any]
+    proactive_brief: dict[str, Any]
+    social_context: list[dict[str, Any]]
+    # Knowledge / capability guardrails
+    capability_profile: dict[str, Any] | None
+    capability_decision: dict[str, Any]
+    typing_style: dict[str, Any] | None

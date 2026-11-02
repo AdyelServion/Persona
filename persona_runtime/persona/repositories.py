@@ -128,6 +128,60 @@ class PersonaRepository:
     def list_canonical_facts(self, persona_id: str) -> list[dict[str, Any]]:
         return list(self.col.find({"persona_id": persona_id, "doc_type": "canonical_fact"}))
 
+    def get_typing_style(self, persona_id: str) -> dict[str, Any] | None:
+        return self.col.find_one({"persona_id": persona_id, "doc_type": "typing_style"})
+
+    def upsert_typing_style(
+        self, persona_id: str, params: dict[str, Any], *, overwrite: bool = True
+    ) -> dict[str, Any]:
+        existing = self.get_typing_style(persona_id)
+        if existing and not overwrite:
+            return existing
+        now = utcnow()
+        doc = {
+            "persona_id": persona_id,
+            "doc_type": "typing_style",
+            "category": "_typing",
+            "subcategory_key": "_typing_style",
+            "params": dict(params),
+            "version": int((existing or {}).get("version", 0)) + 1,
+            "updated_at": now,
+        }
+        if existing:
+            self.col.update_one({"_id": existing["_id"]}, {"$set": doc})
+            doc["_id"] = existing["_id"]
+        else:
+            doc["created_at"] = now
+            doc["_id"] = self.col.insert_one(doc).inserted_id
+        return doc
+
+    def get_capability_profile(self, persona_id: str) -> dict[str, Any] | None:
+        return self.col.find_one({"persona_id": persona_id, "doc_type": "capability_profile"})
+
+    def upsert_capability_profile(
+        self, persona_id: str, profile: dict[str, Any], *, overwrite: bool = True
+    ) -> dict[str, Any]:
+        existing = self.get_capability_profile(persona_id)
+        if existing and not overwrite:
+            return existing
+        now = utcnow()
+        doc = {
+            "persona_id": persona_id,
+            "doc_type": "capability_profile",
+            "category": "_capability",
+            "subcategory_key": "_capability_profile",
+            "profile": {k: v for k, v in profile.items() if k != "persona_id"},
+            "version": int((existing or {}).get("version", 0)) + 1,
+            "updated_at": now,
+        }
+        if existing:
+            self.col.update_one({"_id": existing["_id"]}, {"$set": doc})
+            doc["_id"] = existing["_id"]
+        else:
+            doc["created_at"] = now
+            doc["_id"] = self.col.insert_one(doc).inserted_id
+        return doc
+
     def categories_present(self, persona_id: str) -> set[str]:
         return set(self.col.distinct("category", {"persona_id": persona_id, "doc_type": "subcategory"}))
 

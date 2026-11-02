@@ -24,8 +24,26 @@ class DeterministicQALLM:
         sys_l = system.lower()
         user_l = user.lower()
 
+        if "capability classification" in sys_l:
+            return {
+                "domain": "general",
+                "subdomain": None,
+                "matched_domain": None,
+                "request_type": "explain",
+                "depth": "basic",
+                "requires_specialist": False,
+                "high_stakes": None,
+                "needs_jurisdiction": False,
+                "user_self_disclosure_domain": None,
+                "model_confidence": 0.5,
+            }
         if "extract memory" in sys_l or "memory candidates" in sys_l:
             return self._memory(user_l)
+        if "sarah is messaging this user first" in sys_l:
+            from persona_runtime.outbound.briefs import brief_from_prompt_context, fallback_messages
+
+            brief = brief_from_prompt_context(user)
+            return {"messages": [{"text": t, "type": "text"} for t in fallback_messages(brief)]}
         if "behaviour decision" in sys_l:
             return {
                 "primary_action": "react",
@@ -96,7 +114,7 @@ class DeterministicQALLM:
                     "is_correction": correction or ("call me" in user_l),
                 }
             )
-        if "honda" in user_l or "cr-z" in user_l:
+        if re.search(r"\bcr-?z\b", user_l):
             candidates.append(
                 {
                     "memory_type": "semantic",
@@ -110,7 +128,7 @@ class DeterministicQALLM:
                     "is_correction": False,
                 }
             )
-        if "photography" in user_l:
+        if "photography" in user_l and "used to" not in user_l:
             candidates.append(
                 {
                     "memory_type": "semantic",
@@ -193,6 +211,18 @@ class DeterministicQALLM:
                     "is_correction": False,
                 }
             )
+        from persona_runtime.memory.user_facts import extract_user_facts
+
+        for fact in extract_user_facts(user_l):
+            if any(
+                c.get("predicate") == fact.predicate
+                and str(c.get("object") or "").lower() == str(fact.object or "").lower()
+                for c in candidates
+            ):
+                continue
+            if fact.predicate in {"name", "owns_car"} and any(c.get("predicate") == fact.predicate for c in candidates):
+                continue
+            candidates.append(fact.model_dump(mode="json", exclude_none=True))
         if not candidates:
             return {"candidates": [{"memory_type": "no_memory", "importance": 0.0, "confidence": 1.0}]}
         return {"candidates": candidates}
@@ -289,6 +319,17 @@ class DeterministicQALLM:
             return {"messages": [{"text": t, "type": "text"} for t in planned]}
 
         question = self._latest_user_text(user) or user
+        policy = self._section_payload(user, "CAPABILITY_POLICY")
+        if isinstance(policy, dict) and policy.get("category") in {"E", "F"}:
+            style = (policy.get("rule") or "").split(":")[-1].strip()
+            topic = str(policy.get("topic") or "that")
+            if policy.get("category") == "F":
+                text = f"I know the basics of {topic}, but something this specific needs someone properly qualified."
+            else:
+                text = f"haha, {topic} isnt really my thing. im much more at home with financial reports"
+            if style:
+                pass
+            return {"messages": [{"text": text, "type": "text"}]}
         clocked = self._from_clock(question, user)
         if clocked:
             return {"messages": [{"text": t, "type": "text"} for t in clocked]}

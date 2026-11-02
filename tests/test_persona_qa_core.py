@@ -54,12 +54,14 @@ def test_seed_loads_all_expected_keys(seeded_db):
     assert "MEM-001" in keys
     assert "PROFILE-001" in keys
     assert "PERSIST-010" in keys
+    assert "CAP-001" in keys
+    assert "CAP-015" in keys
     assert len(keys) >= 150
 
 
 def test_write_json_fixtures(tmp_path):
     paths = write_json_fixtures(tmp_path)
-    assert len(paths) == 11
+    assert len(paths) == 16
     assert all(p.exists() for p in paths)
 
 

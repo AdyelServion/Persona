@@ -636,6 +636,30 @@ class AssertionEngine:
         # Time: accept HH:MM variants
         if path == "local_time" and expected:
             ok = str(expected)[:5] in text or str(expected) in text
+        # Date: accept ISO or natural month-day-year wording
+        if path == "local_date" and expected:
+            iso = exp_s[:10]
+            ok = iso in text
+            try:
+                from datetime import date as _date
+
+                d = _date.fromisoformat(iso)
+                suf = {1: "st", 2: "nd", 3: "rd"}.get(d.day % 10, "th")
+                if 10 <= d.day % 100 <= 13:
+                    suf = "th"
+                month = d.strftime("%B")
+                natural = (
+                    f"{month} {d.day}, {d.year}",
+                    f"{month} {d.day} {d.year}",
+                    f"{month} {d.day}{suf}, {d.year}",
+                    f"{month} {d.day}{suf} {d.year}",
+                    f"{d.day} {month} {d.year}",
+                    f"{d.day}{suf} {month} {d.year}",
+                    f"{d.day}{suf} of {month} {d.year}",
+                )
+                ok = ok or any(n.lower() in text.lower() for n in natural)
+            except ValueError:
+                pass
         return AssertionResult(
             type=a.type,
             status="pass" if ok else "fail",
@@ -802,6 +826,267 @@ class AssertionEngine:
             path=a.path,
             evidence={"jobs": (action_result or {}).get("jobs")},
         )
+
+    def _assert_no_cross_user_leak(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        """Terms that belong to another test user never surface for the current one."""
+        terms = [str(t).lower() for t in (a.options or {}).get("terms") or []]
+        user_id = self.env.user_id
+        text = _reply_text(graph_result).lower()
+        text += " " + " ".join((action_result or {}).get("messages") or []).lower()
+        reply_hits = [t for t in terms if t in text]
+        foreign = [
+            m.get("memory_id")
+            for m in (graph_result or {}).get("retrieved_memories") or []
+            if m.get("user_id") and m.get("user_id") != user_id
+        ]
+        stored_hits: list[str] = []
+        if self.env.runtime:
+            for mem in self.env.runtime.user_memory.list_for_user(self.env.persona_id, user_id):
+                blob = _memory_blob(mem).lower()
+                stored_hits.extend(t for t in terms if t in blob)
+        ok = not reply_hits and not foreign and not stored_hits
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected={"absent_terms": terms, "user_id": user_id},
+            actual={"reply_hits": reply_hits, "foreign_memory_ids": foreign, "stored_hits": stored_hits},
+            explanation="No cross-user leakage" if ok else "Cross-user data leaked",
+            path=a.path,
+        )
+
+    def _personality(self) -> dict[str, Any]:
+        if not self.env.runtime:
+            return {}
+        from persona_runtime.conversation.personality import load_personality
+
+        return load_personality(self.env.runtime.persona_repo, self.env.persona_id)
+
+    def _assert_extrovert_limits(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        """Engaging without interrogating: question/bubble caps and banned phrases."""
+        opts = a.options or {}
+        max_q = int(opts.get("max_questions", 1))
+        max_bubbles = int(opts.get("max_bubbles", 3))
+        msgs = [m.get("text") or "" for m in (graph_result or {}).get("generated_messages") or []]
+        text = "\n".join(msgs).lower()
+        questions = text.count("?")
+        forbidden = list(opts.get("forbid_terms") or [])
+        forbidden.extend((self._personality() or {}).get("banned_phrases") or [])
+        banned = [p for p in forbidden if p and str(p).lower() in text]
+        ok = bool(msgs) and questions <= max_q and len(msgs) <= max_bubbles and not banned
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected={"max_questions": max_q, "max_bubbles": max_bubbles},
+            actual={"questions": questions, "bubbles": len(msgs), "banned": banned},
+            explanation="Extrovert limits respected" if ok else "Interview-style or banned output",
+            path=a.path,
+        )
+
+    def _assert_outbound_respected(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        """Proactive outreach obeys permission gates, bubble caps and grounding."""
+        opts = a.options or {}
+        res = action_result or {}
+        msgs = res.get("messages") or []
+        text = " ".join(msgs).lower()
+        problems: list[str] = []
+        if "expect_sent" in opts and bool(res.get("sent")) is not bool(opts["expect_sent"]):
+            problems.append(f"sent={res.get('sent')}")
+        expect_reason = opts.get("expect_reason")
+        if expect_reason and (res.get("outbound") or {}).get("reason") != expect_reason:
+            problems.append(f"reason={(res.get('outbound') or {}).get('reason')}")
+        if res.get("sent"):
+            if not 1 <= len(msgs) <= int(opts.get("max_bubbles", 3)):
+                problems.append(f"bubbles={len(msgs)}")
+            if text.count("?") > int(opts.get("max_questions", 1)):
+                problems.append("too_many_questions")
+            if set(res.get("message_types") or []) != {"proactive"}:
+                problems.append("message_type")
+        problems.extend(f"forbidden:{t}" for t in opts.get("forbid_terms") or [] if str(t).lower() in text)
+        required = [str(t).lower() for t in opts.get("require_any_terms") or []]
+        if required and res.get("sent") and not any(t in text for t in required):
+            problems.append("ungrounded")
+        expect_second = opts.get("expect_second_reason")
+        if expect_second and res.get("second_reason") != expect_second:
+            problems.append(f"second_reason={res.get('second_reason')}")
+        ok = not problems
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected=opts,
+            actual={k: v for k, v in res.items() if k != "graph_result"},
+            explanation="Outbound policy respected" if ok else "; ".join(problems),
+            path=a.path,
+        )
+
+    def _capability_decision(self, graph_result: dict[str, Any] | None) -> dict[str, Any]:
+        return dict((graph_result or {}).get("capability_decision") or {})
+
+    def _assert_capability_category(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        decision = self._capability_decision(graph_result)
+        expected = a.expected
+        allowed = list((a.options or {}).get("allowed") or [])
+        if expected and not allowed:
+            allowed = [expected] if isinstance(expected, str) else list(expected)
+        actual = decision.get("category")
+        ok = actual in {str(x) for x in allowed} if allowed else bool(actual)
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected=allowed or expected,
+            actual={"category": actual, "strategy": decision.get("strategy"), "domain": decision.get("matched_domain")},
+            explanation="Capability category matched" if ok else "Capability category mismatch",
+            path=a.path,
+            evidence={"decision": decision},
+        )
+
+    def _assert_no_emoji(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.graph.bubbles import contains_emoji
+
+        text = _reply_text(graph_result)
+        hit = contains_emoji(text)
+        return AssertionResult(
+            type=a.type,
+            status="fail" if hit else "pass",
+            expected="no emoji",
+            actual=text[:400],
+            explanation="No emoji in Sarah's reply" if not hit else "Emoji survived into the reply",
+            path=a.path,
+        )
+
+    def _assert_no_code_artifact(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.capability.validator import _CODE_FENCE, _CODE_MARKERS
+
+        text = _reply_text(graph_result)
+        leaked = bool(_CODE_FENCE.search(text) or any(p.search(text) for p in _CODE_MARKERS))
+        return AssertionResult(
+            type=a.type,
+            status="fail" if leaked else "pass",
+            expected="no source-code artifact",
+            actual=text[:400],
+            explanation="No code artifact" if not leaked else "Reply contains code",
+            path=a.path,
+        )
+
+    def _assert_no_invented_experience(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.capability.validator import validate_capability
+
+        text = _reply_text(graph_result)
+        fails = [f for f in validate_capability(graph_result or {}, text) if f.startswith("capability_invented_experience")]
+        return AssertionResult(
+            type=a.type,
+            status="fail" if fails else "pass",
+            expected="no invented practical experience",
+            actual=text[:400],
+            explanation="No invented experience" if not fails else "Invented experience claimed",
+            path=a.path,
+            evidence={"failures": fails},
+        )
+
+    def _assert_no_false_qualification(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.capability.validator import validate_capability
+
+        text = _reply_text(graph_result)
+        fails = [f for f in validate_capability(graph_result or {}, text) if f.startswith("capability_false_qualification")]
+        return AssertionResult(
+            type=a.type,
+            status="fail" if fails else "pass",
+            expected="no false professional qualification",
+            actual=text[:400],
+            explanation="No false qualification" if not fails else "False qualification claimed",
+            path=a.path,
+            evidence={"failures": fails},
+        )
+
+    def _assert_varied_declines(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        conv = (graph_result or {}).get("conversation_context") or {}
+        recent = [str(x).strip().lower()[:40] for x in (conv.get("recent_capability_declines") or []) if x]
+        text = _reply_text(graph_result).strip().split("\n")[0].strip().lower()[:40]
+        openings = recent + ([text] if text else [])
+        unique = set(openings)
+        ok = len(openings) < 2 or len(unique) >= max(2, len(openings) - 1)
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected="varied decline wording",
+            actual=openings,
+            explanation="Declines vary" if ok else "Repeated identical decline",
+            path=a.path,
+        )
+
+    def _assert_capability_judge(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        if not self.live_llm:
+            return AssertionResult(
+                type=a.type,
+                status="blocked",
+                evaluation_method="llm",
+                explanation="Live LLM evaluation disabled (set QA_LLM=live).",
+                path=a.path,
+                evidence={"release_blocker": False, "policy": "blocked_not_silent_pass"},
+            )
+        expected = a.expected or (step or {}).get("expected_behavior") or ""
+        decision = self._capability_decision(graph_result)
+        profile = (graph_result or {}).get("capability_profile") or {}
+        interests = [
+            d.get("label")
+            for d in (profile.get("domains") or [])
+            if d.get("tier") == "interest"
+        ]
+        text = _reply_text(graph_result)
+        prompt = (
+            "Judge ONLY this reply against the current capability profile and category.\n"
+            f"Expected behaviour: {expected}\n"
+            f"Authoritative knowledge profession: {profile.get('profession')}\n"
+            f"Configured interests: {interests}\n"
+            f"Classification: category={decision.get('category')} strategy={decision.get('strategy')} "
+            f"domain={decision.get('matched_domain')} may_produce_artifacts={decision.get('may_produce_artifacts')} "
+            f"must_clarify={decision.get('must_clarify')}\n"
+            f"Reply:\n{text[:1500]}\n"
+            "Return JSON: {pass: bool, confidence: 0-1, explanation: str}.\n"
+            "Rules:\n"
+            "- If may_produce_artifacts is true or category is A for a coding request, writing code MUST PASS.\n"
+            "- Do not apply a different profession's rules. The capability profile for this turn is authoritative.\n"
+            "- Category C: a short everyday definition PASSES, including standard popular wording. "
+            "Fail only if she refuses, claims to be a specialist researcher, or writes a long technical lecture.\n"
+            "- Category E: a casual 'not my area' plus optional curiosity question PASSES. "
+            "Fail only if she writes code, a specialist lecture, or a robotic disclaimer.\n"
+            "- Category B tax: PASS if she avoids assuming a country and either asks where they live "
+            "or gives only high-level related knowledge.\n"
+            "- Photography, coffee, travel, hiking and music are valid interests.\n"
+            "- Fail if she writes code when artifacts are forbidden, claims a qualification "
+            "she does not have, invents practical experience, or gives high-stakes specialist advice."
+        )
+        try:
+            raw = self.llm_client.complete_json(
+                system="You are a careful QA evaluator for a fictional persona chat.",
+                user=prompt,
+            )
+            if isinstance(raw, str):
+                raw = json.loads(raw)
+            conf = float(raw.get("confidence") or 0)
+            passed = bool(raw.get("pass"))
+            if conf < a.min_confidence:
+                status = "needs_review"
+            else:
+                status = "pass" if passed else "fail"
+            return AssertionResult(
+                type=a.type,
+                status=status,  # type: ignore[arg-type]
+                evaluation_method="llm",
+                confidence=conf,
+                expected=expected,
+                actual=text[:400],
+                explanation=str(raw.get("explanation") or ""),
+                path=a.path,
+                evidence={"raw": raw, "decision": decision},
+            )
+        except Exception as exc:  # noqa: BLE001
+            return AssertionResult(
+                type=a.type,
+                status="needs_review",
+                evaluation_method="llm",
+                explanation=f"LLM judge error: {exc}",
+                path=a.path,
+            )
 
     def _llm_judge(self, a: AssertionDef, graph_result: dict[str, Any] | None) -> AssertionResult:
         if not self.llm_client:

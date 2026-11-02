@@ -73,12 +73,15 @@ def memory_facets(text: str) -> list[str]:
     norm = (text or "").lower()
     rules = (
         ("name", r"\bname\b"),
-        ("owns_car", r"\b(?:car|honda)\b|\bdrive\b"),
+        ("owns_car", r"\b(?:car|honda|toyota)\b|\bdrive\b"),
         ("morning_drink", r"\b(?:drink|tea|coffee|morning)\b"),
         ("weekend_preference", r"\bweekends?\b"),
-        ("hobby", r"\b(?:hobby|photography)\b"),
+        ("hobby", r"\b(?:hobby|hobbies|photography|free time|spare time)\b"),
         ("upcoming", r"\bcoming\s+up\b|\bpresentation\b|\bbig\s+day\b|\bnext\s+week\b"),
         ("messaging_boundary", r"\bmessag|\bbusy\b|\bboundary\b"),
+        ("lives_in", r"\bwhere do i live\b|\bwhere am i (?:based|from)\b"),
+        ("music_preference", r"\bmusic\b"),
+        ("supports_team", r"\bteam\b"),
     )
     found: list[str] = []
     for facet, pattern in rules:
@@ -105,16 +108,24 @@ def _memory_matches_facet(mem: dict[str, Any], facet: str) -> bool:
         "hobby": {"hobby"},
         "upcoming": {"has_upcoming_event"},
         "messaging_boundary": {"messaging_boundary"},
+        "lives_in": {"lives_in", "location"},
+        "music_preference": {"music_preference"},
+        "supports_team": {"supports_team"},
     }
     needles = {
         "name": ("name",),
-        "owns_car": ("honda", "cr-z", "car"),
+        "owns_car": ("car",),
         "morning_drink": ("tea", "coffee", "drink"),
         "weekend_preference": ("weekend", "drives"),
         "hobby": ("photography", "hobby"),
         "upcoming": ("presentation", "coming up"),
         "messaging_boundary": ("messag", "busy", "boundary"),
+        "lives_in": ("lives in",),
+        "music_preference": ("music",),
+        "supports_team": ("supports",),
     }
+    if mem.get("interest_status") == "former" or mem.get("temporal") == "temporary":
+        return False
     if pred in predicates.get(facet, set()):
         return True
     return any(needle in blob for needle in needles.get(facet, ()))
@@ -149,8 +160,22 @@ def select_user_memories(
             ),
             reverse=True,
         )
-        picked.append(matches[0])
+        if facet in MULTI_VALUED_FACETS:
+            seen: set[str] = set()
+            for m in matches:
+                val = str(m.get("object") or m.get("fact") or "").lower()
+                if val in seen or m in picked:
+                    continue
+                seen.add(val)
+                picked.append(m)
+                if len(seen) >= 3:
+                    break
+        else:
+            picked.append(matches[0])
     return picked
+
+
+MULTI_VALUED_FACETS = frozenset({"hobby", "music_preference"})
 
 
 def _memory_phrase(mem: dict[str, Any]) -> str:
@@ -1113,7 +1138,7 @@ def fallback_messages_from_answer_plan(plan: dict[str, Any]) -> list[str]:
 def _naturalize(slot: str, direct: str, ans: dict[str, Any]) -> str:
     direct = (direct or "").strip()
     if slot == "meal_now":
-        return f"{direct.capitalize() if direct[:1].islower() else direct} today, actually 😂"
+        return f"{direct} today actually" if direct else "not sure what i had, honestly"
     if slot == "activity_now":
         return f"I'm {direct}." if direct and not direct.lower().startswith("i'm") else (direct or "Just getting on with things.")
     if slot == "location_now":
@@ -1153,10 +1178,10 @@ def _naturalize(slot: str, direct: str, ans: dict[str, Any]) -> str:
     if slot == "follow_up":
         if direct:
             return (
-                f"Haha, it definitely has its moments 😂 "
-                f"But I actually don't mind it when the {direct} finally lines up."
+                f"haha it definitely has its moments. "
+                f"i dont mind it when the {direct} finally lines up"
             )
-        return "Haha, yeah — it has its moments 😂"
+        return "haha yeah, it has its moments"
     return direct or "Yeah."
 
 

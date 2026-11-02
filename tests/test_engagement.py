@@ -20,6 +20,235 @@ from persona_runtime.memory.retrieval import MemoryRetriever
 from persona_runtime.memory.schemas import MemoryCandidate
 
 
+def test_onboarding_asks_where_they_live_then_one_basic_at_a_time():
+    how = select_strategy(
+        understanding={
+            "speech_act": "acknowledgement",
+            "topic": "opening",
+            "importance": "low",
+            "emotional_intensity": "low",
+        },
+        conversation_context={
+            "onboarding_step": "how_are_you",
+            "recent_moves": ["ASK"],
+            "style_profile": {"response_length": "short", "question_tolerance": 0.2},
+        },
+        incoming_message="I'm good thanks",
+    )
+    assert how["onboarding_step"] == "lives_in"
+    assert how["should_ask_question"] is True
+    assert "where they live" in how["followup_hint"]
+
+    work = select_strategy(
+        understanding={
+            "speech_act": "self_disclosure",
+            "topic": "location",
+            "importance": "medium",
+            "emotional_intensity": "low",
+        },
+        conversation_context={
+            "onboarding_step": "lives_in",
+            "recent_moves": ["ASK", "ASK"],
+            "style_profile": {},
+            "user_facts_this_conversation": [{"predicate": "lives_in", "object": "Leeds"}],
+        },
+        incoming_message="I live in Leeds",
+    )
+    assert work["onboarding_step"] == "occupation"
+    assert work["should_ask_question"] is True
+    assert "day to day" in work["followup_hint"]
+
+    hobby = select_strategy(
+        understanding={
+            "speech_act": "self_disclosure",
+            "topic": "everyday",
+            "importance": "medium",
+            "emotional_intensity": "low",
+        },
+        conversation_context={
+            "onboarding_step": "occupation",
+            "recent_moves": ["ASK", "ASK"],
+            "style_profile": {},
+            "user_facts_this_conversation": [{"predicate": "occupation", "object": "nurse"}],
+        },
+        incoming_message="I'm a nurse",
+    )
+    assert hobby["onboarding_step"] == "hobby"
+    assert hobby["should_ask_question"] is True
+
+    done = select_strategy(
+        understanding={
+            "speech_act": "acknowledgement",
+            "topic": "hobbies",
+            "importance": "low",
+            "emotional_intensity": "low",
+        },
+        conversation_context={
+            "onboarding_step": "hobby",
+            "recent_moves": ["ASK", "ASK"],
+            "style_profile": {},
+        },
+        incoming_message="Mostly chess",
+    )
+    assert done["onboarding_step"] == "done"
+    assert done["should_ask_question"] is False
+
+
+def test_onboarding_stops_when_declined_and_pauses_for_a_direct_question():
+    declined = select_strategy(
+        understanding={
+            "speech_act": "acknowledgement",
+            "topic": "location",
+            "importance": "low",
+            "emotional_intensity": "low",
+        },
+        conversation_context={"onboarding_step": "lives_in", "recent_moves": [], "style_profile": {}},
+        incoming_message="I'd rather not talk about that",
+    )
+    assert declined["onboarding_step"] == "done"
+    assert declined["should_ask_question"] is False
+
+    asked = select_strategy(
+        understanding={
+            "speech_act": "question",
+            "requires_information": True,
+            "topic": "lunch",
+            "importance": "medium",
+            "emotional_intensity": "low",
+            "questions": [{"slot": "meal_now", "text": "What are you having for lunch?"}],
+        },
+        conversation_context={"onboarding_step": "how_are_you", "recent_moves": [], "style_profile": {}},
+        incoming_message="What are you having for lunch?",
+    )
+    assert asked["strategy"] == "direct_answer"
+    assert "onboarding_step" not in asked
+
+
+def test_humanize_text_drops_dashes_and_keeps_hyphenated_words():
+    from persona_runtime.graph.bubbles import humanize_text, messages_state_update
+    from persona_runtime.graph.nodes import generate_response
+    from persona_runtime.prompts.registry import PROMPT_SEEDS
+
+    assert humanize_text("programming—any recent projects") == "programming, any recent projects"
+    assert humanize_text("Hey — how's your day going?") == "Hey, how's your day going?"
+    assert humanize_text("beach – mountain") == "beach, mountain"
+    assert humanize_text("Hey -- how's your day going?") == "Hey, how's your day going?"
+    assert humanize_text("movie-at-home") == "movie-at-home"
+    packed = messages_state_update(["Hey — how's your day?"])
+    assert "—" not in packed["generated_response"]
+    assert " -- " not in packed["generated_response"]
+
+    busy = generate_response(
+        {"busy_ack": True, "persona_state": {"current_state": {"current_activity": "meeting"}}},
+        None,
+    )
+    assert "—" not in busy["generated_response"]
+    assert "–" not in busy["generated_response"]
+    assert " -- " not in busy["generated_response"]
+    assert "meeting" in busy["generated_response"].lower()
+
+    opening = next(seed for seed in PROMPT_SEEDS if seed["name"] == "opening_generation")
+    assert opening["version"] == 8
+    assert "em dash" in opening["system_prompt_template"].lower()
+
+
+def test_opener_style_follows_interests_and_rejects_the_script():
+    from persona_runtime.conversation.engagement import (
+        fallback_opener,
+        is_robotic_opener,
+        opener_style,
+    )
+
+    travel = opener_style("Adeel Ahmed", ["travel"])
+    programming = opener_style("Daniyal Muzammil", ["programming"])
+    first = opener_style("Adeel Ahmed", [])
+    assert travel["categories"] == ["travel"]
+    assert travel["first_name"] == "Adeel"
+    assert any("travel" in line.lower() or "visited" in line.lower() for line in travel["examples"])
+    assert programming["categories"] == ["hobbies"]
+    assert programming["first_name"] == "Daniyal"
+    assert first["categories"] == ["first_time"]
+    assert any("day going" in line.lower() for line in first["examples"])
+    assert is_robotic_opener("Hey Daniyal Muzammil. You mentioned programming — how are you?")
+    assert is_robotic_opener("Hey Adeel. Still into photography? How are you?")
+    assert not is_robotic_opener("Hey! How's your day going so far?")
+    fallback = fallback_opener(travel, "user-a")[0]
+    assert fallback in travel["examples"]
+    assert not is_robotic_opener(fallback)
+
+
+def test_signup_interests_skip_the_hobby_question():
+    done = select_strategy(
+        understanding={
+            "speech_act": "self_disclosure",
+            "topic": "everyday",
+            "importance": "medium",
+            "emotional_intensity": "low",
+        },
+        conversation_context={
+            "onboarding_step": "occupation",
+            "signup_interests": ["photography"],
+            "recent_moves": ["ASK", "ASK"],
+            "style_profile": {},
+        },
+        incoming_message="I'm a nurse",
+    )
+    assert done["onboarding_step"] == "done"
+    assert done["should_ask_question"] is False
+
+
+def test_opening_plan_asks_only_how_they_are():
+    from persona_runtime.graph.context_builder import build_prompt_context
+    from persona_runtime.graph.nodes import response_plan
+
+    state = {
+        "event_type": "conversation_start",
+        "user_id": "user-adeel",
+        "user_context": {
+            "display_name": "Adeel",
+            "profile": {"display_name": "Adeel", "interests": ["photography"]},
+        },
+        "understanding": {"speech_act": "greeting", "topic": "opening"},
+        "behaviour_plan": {
+            "conversational_move": "ASK",
+            "allowed_moves": ["ASK", "REACT"],
+            "warmth": 0.6,
+            "engagement": {
+                "strategy": "answer_plus_followup",
+                "should_ask_question": True,
+            },
+        },
+        "engagement_brief": {
+            "strategy": "answer_plus_followup",
+            "should_ask_question": True,
+        },
+        "conversation_context": {},
+        "persona_state": {
+            "current_state": {
+                "current_activity": "working",
+                "current_task": "monthly financial reporting",
+                "current_location": "office",
+            }
+        },
+        "retrieved_memories": [],
+        "allowed_evidence_ids": [],
+    }
+    out = response_plan(state, None)
+    plan = out["response_plan"]
+    points = " ".join(plan["talking_points"])
+    assert plan["should_ask_question"] is True
+    assert plan["onboarding_step"] == "how_are_you"
+    assert plan["opener_style"]["categories"] == ["hobbies"]
+    assert "photography" in plan["opener_style"]["interests"]
+    assert "write a natural opener" in points
+    assert "financial reporting" not in points.lower()
+    prompt = build_prompt_context({**state, "response_plan": plan})
+    assert "CURRENT_STATE" not in prompt
+    assert "financial reporting" not in prompt.lower()
+    assert "photography" in prompt.lower()
+    assert "use this opener exactly" not in prompt.lower()
+
+
 def test_lunch_question_direct_answer_no_followup():
     brief = select_strategy(
         understanding={

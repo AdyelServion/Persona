@@ -23,6 +23,7 @@ from persona_runtime.qa.safety import (
     PROTECTED_PERSONA_IDS,
     PROTECTED_USER_IDS,
     assert_cleanup_filter,
+    assert_qa_app_user,
     assert_qa_persona_id,
     assert_qa_user_id,
     assert_safe_database,
@@ -193,6 +194,13 @@ class QAEnvironment:
         self.conversation_id = conv["conversation_id"]
         return self.user_id
 
+    def set_capability_profile(self, profile: dict[str, Any]) -> None:
+        """Overwrite the qa clone's capability profile (CAP-013 isolation)."""
+        assert self.runtime
+        self.runtime.persona_repo.upsert_capability_profile(
+            self.persona_id, profile, overwrite=True
+        )
+
     def correct_canonical_fact(self, fact_id: str, object_value: str) -> None:
         """Fixture-only correction on the qa clone."""
         identity = self.db[COLLECTION_NAMES["identity"]]
@@ -287,6 +295,12 @@ class QAEnvironment:
 
         for mem_name in MEMORY_COLLECTIONS.values():
             _del(mem_name, {"persona_id": self.persona_id})
+        _del(COLLECTION_NAMES["user_topics"], {"persona_id": self.persona_id})
+        _del(COLLECTION_NAMES["proactive_settings"], {"persona_id": self.persona_id})
+        qa_users = {"$regex": f"^{QA_USER_PREFIX}{self.run_suffix}"}
+        for user_doc in self.db[COLLECTION_NAMES["app_users"]].find({"user_id": qa_users}):
+            assert_qa_app_user(user_doc)
+        _del(COLLECTION_NAMES["app_users"], {"user_id": qa_users})
 
         self.clear_clock()
         return deleted

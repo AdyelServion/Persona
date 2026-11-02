@@ -6,6 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 from pymongo.database import Database
 
 from persona_runtime.db import COLLECTION_NAMES
@@ -50,9 +51,39 @@ class ResponseJobRepository:
             "event_type": doc.get("event_type") or "user_message",
             "follow_up_of": doc.get("follow_up_of"),
             "busy_ack": bool(doc.get("busy_ack")),
+            "user_id": doc.get("user_id"),
         }
+        for key in ("proactive_type", "idempotency_key", "expires_at", "proactive_brief", "outbound_id"):
+            if doc.get(key) is not None:
+                payload[key] = doc[key]
         self.col.insert_one(payload)
         return payload
+
+    def create_idempotent(self, doc: dict[str, Any]) -> dict[str, Any] | None:
+        """Create unless a job with the same idempotency_key exists. Returns None on duplicate."""
+        key = doc.get("idempotency_key")
+        if not key:
+            raise ValueError("idempotency_key required")
+        if self.col.find_one({"idempotency_key": key}):
+            return None
+        try:
+            return self.create(doc)
+        except DuplicateKeyError:
+            return None
+
+    def cancel(self, job_id: str, *, reason: str) -> bool:
+        res = self.col.update_one(
+            {"job_id": job_id, "status": "scheduled"},
+            {"$set": {"status": "cancelled", "error": reason, "completed_at": utcnow()}},
+        )
+        return bool(res.modified_count)
+
+    def open_proactive_for_user(self, user_id: str) -> list[dict[str, Any]]:
+        return list(
+            self.col.find(
+                {"user_id": user_id, "event_type": "proactive", "status": {"$in": list(OPEN_STATUSES)}}
+            )
+        )
 
     def append_messages(
         self,

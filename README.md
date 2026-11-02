@@ -28,7 +28,23 @@ DEFAULT_USER_ID=local-user
 FASTAPI_BASE_URL=http://127.0.0.1:8001
 DJANGO_SECRET_KEY=...
 DJANGO_DEBUG=true
+INTERNAL_API_TOKEN=...            # shared Django↔FastAPI secret; required in production
+MAX_USERS_PER_BROWSER=25
+PROACTIVE_OUTBOUND_ENABLED=false  # global switch; users must also opt in
+PROACTIVE_MAX_PER_DAY=1
+PROACTIVE_MAX_PER_WEEK=3
+PROACTIVE_MIN_GAP_HOURS=20
+PROACTIVE_QUIET_START=22:00
+PROACTIVE_QUIET_END=08:00
+PROACTIVE_SCAN_MINUTES=15
+PROACTIVE_MAX_BUBBLES=3
+PROACTIVE_JOB_TTL_HOURS=6
+PROACTIVE_DELIVERY=in_app         # or "test" (records only)
+SARAH_LED_TURNS=4
+REALISTIC_REPLY_DELAYS=true
 ```
+
+See `.env.example` for descriptions.
 
 ## Setup
 
@@ -52,14 +68,38 @@ This parses the category `.md` files into the MongoDB `Identity` collection (one
 python scripts\run_api.py
 ```
 
-API listens on `http://127.0.0.1:8001`
+API listens on `http://127.0.0.1:8001`. Every `/api/*` call needs the `X-Internal-Token`
+header. Django supplies it, along with `X-User-Id` from the session. User IDs in request
+bodies are ignored, and other users' conversations return 404.
 
 - `GET /health`
-- `POST /api/conversations`
-- `GET /api/conversations/{id}/messages`
-- `POST /api/conversations/{id}/messages`
-- `POST /api/conversations/{id}/opening`
+- `POST /api/users`, `POST /api/users/summaries`, `GET /api/me`
+- `GET|POST /api/conversations`
+- `GET|POST /api/conversations/{id}/messages`
+- `POST /api/conversations/{id}/resume`, `/opening`, `/read`
 - `POST /api/events/message_seen`
+- `GET|PUT /api/proactive-settings`
+- `GET /api/memories`, `DELETE /api/memories/{id}`
+
+## Multiple users and Sarah messaging first
+
+**New chat** creates a separate user, with their own conversation and private memory.
+The header shows that user's id. Paste the same id into New chat on any browser to open
+that chat again. This browser's signed session only remembers chats already opened here.
+Sarah can start
+conversations only for users who opted in. She sends at most 1 message a day and 3 a week,
+respects quiet hours, and sends a burst of 1–3 bubbles. She then waits for a reply and
+never stacks messages. Users control this from the ⚙ settings or by asking her to stop.
+
+Upgrading an existing database (dry run by default):
+
+```powershell
+python scripts\migrate_multiuser.py           # report only
+python scripts\migrate_multiuser.py --apply
+```
+
+Analytics: `python scripts\engagement_report.py --days 7`. Full design, limits and tests:
+[docs/multiuser.md](docs/multiuser.md).
 
 ## Run chat UI (Django)
 
@@ -140,6 +180,6 @@ pytest -q -m integration
 
 ## Notes
 
-- Sarah Taylor is fictional.
+- Sarah Taylor is fictional and presented to users as an AI persona.
 - Do not hard-code the OpenAI model name; `OPENAI_MODEL` is read from the environment.
 - The same LangGraph runtime accepts `persona_id` for future personas.
