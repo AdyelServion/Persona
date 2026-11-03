@@ -1340,6 +1340,36 @@ def _human_meta_identity_cases() -> list[TestCaseDef]:
             evaluation_mode="mixed",
             severity="medium",
         ),
+        _case(
+            "HUMAN-024",
+            "human_like_conversation",
+            "Meta-identity: backend based on AI model",
+            [
+                _step(
+                    1,
+                    message="is your back end based on any AI model ?",
+                    assertions=identity_assertions
+                    + [_assert("tone_quality", evaluation_mode="live", required=False)],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
+        _case(
+            "HUMAN-025",
+            "human_like_conversation",
+            "Meta-identity: backend is LLM",
+            [
+                _step(
+                    1,
+                    message="i mean your backend is LLM ?",
+                    assertions=identity_assertions
+                    + [_assert("tone_quality", evaluation_mode="live", required=False)],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
     ]
 
 

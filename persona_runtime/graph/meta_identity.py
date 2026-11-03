@@ -6,10 +6,10 @@ import re
 
 # General-knowledge asks — not Sarah's nature-of-being
 _META_IDENTITY_EXCLUDE = re.compile(
-    r"\bwhat\s+is\s+(?:an?\s+)?(?:artificial\s+intelligence|ai)\b|"
-    r"\bexplain\s+(?:ai|artificial\s+intelligence)\b|"
-    r"\bhow\s+does\s+(?:ai|artificial\s+intelligence)\b|"
-    r"\bdefine\s+(?:ai|artificial\s+intelligence)\b",
+    r"\bwhat\s+is\s+(?:an?\s+)?(?:artificial\s+intelligence|ai|llm|language\s+model|large\s+language\s+model)\b|"
+    r"\bexplain\s+(?:ai|artificial\s+intelligence|llms?|language\s+models?)\b|"
+    r"\bhow\s+does\s+(?:ai|artificial\s+intelligence|an?\s+llm|a\s+language\s+model)\b|"
+    r"\bdefine\s+(?:ai|artificial\s+intelligence|an?\s+llm|a\s+language\s+model)\b",
     re.I,
 )
 
@@ -20,7 +20,11 @@ _MODEL_PROBE = re.compile(
     r"\bwhat\s+(?:powers|runs)\s+you\b|"
     r"\bwhich\s+model\s+are\s+you\b|"
     r"\bare\s+you\s+(?:chatgpt|grok|claude|gemini|copilot|gpt[-\s]?\d)\b|"
-    r"\bwhat\s+(?:ai|model)\s+(?:are\s+you|is\s+this|do\s+you\s+use)\b",
+    r"\bwhat\s+(?:ai|model)\s+(?:are\s+you|is\s+this|do\s+you\s+use)\b|"
+    r"\byour\s+(?:back\s*end|backend|system|stack)\b|"
+    r"\bare\s+you\s+based\s+on\b|"
+    r"\b(?:based|running|powered)\s+on\s+(?:an?\s+)?(?:ai|llm|gpt|model|language\s+model)\b|"
+    r"\byour\s+(?:back\s*end|backend)\s+is\s+(?:an?\s+)?(?:llm|ai|model|gpt)\b",
     re.I,
 )
 

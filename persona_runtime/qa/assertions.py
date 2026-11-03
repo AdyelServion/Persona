@@ -1050,6 +1050,11 @@ class AssertionEngine:
             "integrated into me",
             "not sure about the specific llm",
             "not sure about the specific model",
+            "my backend",
+            "my back end",
+            "ai models that power",
+            "based on a large language model",
+            "designed to help generate responses",
         ):
             if phrase in lower:
                 extra.append(phrase)
