@@ -2,6 +2,9 @@
 
 Every gate is evaluated in the user's own timezone. Any failing gate blocks the send;
 the first failing gate is returned as the reason so it can be logged and tested.
+
+Quiet hours during *evaluation* are handled by the planner (queue/reschedule), not here,
+unless ``check_quiet_hours=True``.
 """
 
 from __future__ import annotations
@@ -66,6 +69,16 @@ def _history_times(settings_doc: dict[str, Any]) -> list[datetime]:
     return out
 
 
+def _min_gap_timedelta(settings_doc: dict[str, Any], app_settings: Any, backoff: int) -> timedelta:
+    if int(settings_doc.get("engagement_policy_version") or 0) >= 2:
+        gap_min = float(settings_doc.get("min_gap_minutes") or getattr(app_settings, "proactive_min_gap_minutes", 5))
+        base = timedelta(minutes=gap_min)
+    else:
+        gap_hours = float(settings_doc.get("min_gap_hours") or app_settings.proactive_min_gap_hours)
+        base = timedelta(hours=gap_hours)
+    return base * (2**backoff)
+
+
 def evaluate_outbound(
     *,
     settings_doc: dict[str, Any] | None,
@@ -74,6 +87,7 @@ def evaluate_outbound(
     proactive_type: str | None = None,
     open_proactive_jobs: int = 0,
     ignore_quiet_hours: bool = False,
+    check_quiet_hours: bool = True,
 ) -> OutboundDecision:
     now = ensure_utc(now)
     if not getattr(app_settings, "proactive_outbound_enabled", False):
@@ -88,33 +102,54 @@ def evaluate_outbound(
         return OutboundDecision(False, "paused", local)
     if proactive_type and proactive_type in (doc.get("muted_types") or []):
         return OutboundDecision(False, "type_muted", local)
-    if doc.get("unanswered_outbound_id"):
+
+    max_unanswered = int(doc.get("max_unanswered_outbound_messages") or 1)
+    if max_unanswered > 0 and doc.get("unanswered_outbound_id"):
         return OutboundDecision(False, "awaiting_reply", local)
+
     if open_proactive_jobs > 0:
         return OutboundDecision(False, "already_scheduled", local)
-    if not ignore_quiet_hours and in_quiet_hours(
-        local,
-        doc.get("quiet_start") or app_settings.proactive_quiet_start,
-        doc.get("quiet_end") or app_settings.proactive_quiet_end,
+
+    if (
+        check_quiet_hours
+        and doc.get("quiet_hours_enabled", True)
+        and not ignore_quiet_hours
+        and in_quiet_hours(
+            local,
+            doc.get("quiet_start") or app_settings.proactive_quiet_start,
+            doc.get("quiet_end") or app_settings.proactive_quiet_end,
+        )
     ):
         return OutboundDecision(False, "quiet_hours", local)
 
-    gap_hours = float(doc.get("min_gap_hours") or app_settings.proactive_min_gap_hours)
     backoff = int(doc.get("backoff_level") or 0)
-    required_gap = timedelta(hours=gap_hours * (2**backoff))
+    required_gap = _min_gap_timedelta(doc, app_settings, backoff)
     last = doc.get("last_outbound_at")
     if last and now - ensure_utc(last) < required_gap:
         return OutboundDecision(
-            False, "backoff" if backoff else "min_gap", local, {"required_gap_hours": required_gap.total_seconds() / 3600}
+            False, "backoff" if backoff else "min_gap", local, {"required_gap_seconds": required_gap.total_seconds()}
         )
 
     times = _history_times(doc)
+    if int(doc.get("engagement_policy_version") or 0) >= 2:
+        hourly_limit = int(doc.get("hourly_limit") or getattr(app_settings, "proactive_max_per_hour", 2))
+        if hourly_limit > 0 and sum(1 for t in times if now - t < timedelta(hours=1)) >= hourly_limit:
+            return OutboundDecision(False, "hourly_cap", local)
+
     daily_limit = int(doc.get("daily_limit") or app_settings.proactive_max_per_day)
     weekly_limit = int(doc.get("weekly_limit") or app_settings.proactive_max_per_week)
-    if sum(1 for t in times if now - t < timedelta(hours=24)) >= daily_limit:
+    if daily_limit > 0 and sum(1 for t in times if now - t < timedelta(hours=24)) >= daily_limit:
         return OutboundDecision(False, "daily_cap", local)
-    if sum(1 for t in times if now - t < timedelta(days=7)) >= weekly_limit:
+    if weekly_limit > 0 and sum(1 for t in times if now - t < timedelta(days=7)) >= weekly_limit:
         return OutboundDecision(False, "weekly_cap", local)
+
+    if int(doc.get("engagement_policy_version") or 0) >= 2:
+        max_consec = int(
+            doc.get("max_consecutive_initiations") or getattr(app_settings, "proactive_max_consecutive_initiations", 3)
+        )
+        if max_consec > 0 and int(doc.get("consecutive_initiations_without_reply") or 0) >= max_consec:
+            return OutboundDecision(False, "consecutive_initiation_cap", local)
+
     return OutboundDecision(True, "allowed", local)
 
 

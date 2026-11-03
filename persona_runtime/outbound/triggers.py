@@ -178,7 +178,7 @@ def select_trigger(
         transition = suggest_transition(
             user_id=user_id,
             topics=user_topics,
-            profile_card=[],
+            profile_card=profile_card,
             declined_topics=list(declined),
             recent_topics=list(recent),
             now=now,

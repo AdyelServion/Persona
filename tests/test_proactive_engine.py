@@ -38,6 +38,8 @@ def _user(runtime, name: str, *, opt_in: bool = True, chatted: bool = True, hour
     runtime.proactive_settings_repo.get_or_create(uid, persona_id, enabled=opt_in)
     # No quiet hours unless a test sets them
     runtime.proactive_settings_repo.update_public(uid, persona_id, {"quiet_start": "00:00", "quiet_end": "00:00"})
+    if opt_in:
+        runtime.proactive_settings_repo._set(uid, persona_id, {"next_evaluation_at": utcnow()})
     if chatted:
         runtime.conversation_repo.add_message(conversation_id=conv["conversation_id"], sender="user", content="hey")
         runtime.conversation_repo.add_message(conversation_id=conv["conversation_id"], sender="assistant", content="hey!")
@@ -232,7 +234,7 @@ def test_scan_schedules_one_job_and_execute_sends_a_grounded_burst(runtime, plan
 
     prefs = _prefs(runtime, uid)
     assert prefs["unanswered_outbound_id"] == msgs[0]["outbound_id"]
-    blocked = [o for o in planner.scan() if o["user_id"] == uid][0]
+    blocked = planner.evaluate_user(uid)
     assert blocked["reason"] == "awaiting_reply"
 
 

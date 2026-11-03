@@ -19,8 +19,11 @@ from persona_runtime.life.activities import get_activity
 from persona_runtime.life.simulator import LifeSimulator
 from persona_runtime.logging_utils import get_logger, log_event
 from persona_runtime.outbound.briefs import fallback_messages
+from persona_runtime.outbound.context import analyze_recent_conversation
+from persona_runtime.outbound.decision import build_brief_from_decision, decide_proactive_engagement
 from persona_runtime.outbound.delivery import DeliveryAdapter, get_delivery
 from persona_runtime.outbound.policy import evaluate_outbound, unanswered_expired
+from persona_runtime.outbound.schedule import eval_bucket_key, should_queue_for_quiet_hours
 from persona_runtime.outbound.triggers import event_subject, select_trigger
 
 logger = get_logger(__name__)
@@ -67,7 +70,16 @@ class ProactivePlanner:
     def _primary_conversation(self, user_id: str) -> dict[str, Any]:
         return self.runtime.conversation_repo.get_or_create(self.persona_id, user_id)
 
-    def _decision(self, settings_doc, now, proactive_type=None, *, exclude_job_id=None, ignore_quiet=False):
+    def _decision(
+        self,
+        settings_doc,
+        now,
+        proactive_type=None,
+        *,
+        exclude_job_id=None,
+        ignore_quiet=False,
+        check_quiet=True,
+    ):
         open_jobs = [
             j
             for j in self.runtime.job_repo.open_proactive_for_user(settings_doc["user_id"])
@@ -80,6 +92,7 @@ class ProactivePlanner:
             proactive_type=proactive_type,
             open_proactive_jobs=len(open_jobs),
             ignore_quiet_hours=ignore_quiet,
+            check_quiet_hours=check_quiet,
         )
 
     def _current_life_state(self, now: datetime) -> dict[str, Any]:
@@ -128,7 +141,10 @@ class ProactivePlanner:
         availability = float(
             current.get("availability") if current.get("availability") is not None else params.availability
         )
-        key = f"{user_id}:{brief['proactive_type']}:{brief.get('idempotency_subject')}:{local_now.date().isoformat()}"
+        settings_doc = self.runtime.proactive_settings_repo.get(user_id, self.persona_id) or {}
+        interval = int(settings_doc.get("last_selected_interval_minutes") or 15)
+        bucket = eval_bucket_key(now, interval)
+        key = f"{user_id}:{brief['proactive_type']}:{brief.get('idempotency_subject')}:{bucket}"
         job = self.runtime.job_repo.create_idempotent(
             {
                 "persona_id": self.persona_id,
@@ -177,12 +193,29 @@ class ProactivePlanner:
             return []
         self.expire_unanswered(now)
         outcomes = []
-        for doc in self.runtime.proactive_settings_repo.list_enabled(self.persona_id):
+        repo = self.runtime.proactive_settings_repo
+        for doc in repo.list_due(self.persona_id, now):
             try:
                 outcomes.append(self.evaluate_user(doc["user_id"], now=now))
             except Exception as exc:  # noqa: BLE001
                 logger.warning("proactive_evaluate_failed user=%s: %s", doc.get("user_id"), exc)
         return outcomes
+
+    def _skip_evaluation(
+        self,
+        repo,
+        user_id: str,
+        *,
+        reason: str,
+        now: datetime,
+        hint_minutes: int | None = None,
+        fixed_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        repo.record_evaluation_skip(user_id, self.persona_id, reason=reason, now=now, hint_minutes=hint_minutes)
+        if fixed_at is not None:
+            repo.schedule_next_evaluation(user_id, self.persona_id, now=now, fixed_at=fixed_at, reason=reason)
+        self._event("proactive_skipped", {"user_id": user_id, "reason": reason})
+        return {"user_id": user_id, "scheduled": False, "reason": reason}
 
     def evaluate_user(self, user_id: str, *, now: datetime | None = None) -> dict[str, Any]:
         now = ensure_utc(now or utcnow())
@@ -190,40 +223,93 @@ class ProactivePlanner:
         settings_doc = repo.get(user_id, self.persona_id)
         if not settings_doc:
             return {"user_id": user_id, "scheduled": False, "reason": "not_opted_in"}
-        decision = self._decision(settings_doc, now)
+        if settings_doc.get("next_evaluation_at") is None and not settings_doc.get("unanswered_outbound_id"):
+            repo.schedule_next_evaluation(user_id, self.persona_id, now=now, reason="bootstrap")
+            settings_doc = repo.get(user_id, self.persona_id) or settings_doc
+
+        self._event("proactive_evaluated", {"user_id": user_id})
+        interval_selected = settings_doc.get("last_selected_interval_minutes")
+        if interval_selected:
+            self._event("proactive_interval_selected", {"user_id": user_id, "minutes": interval_selected})
+
+        queued, queue_at = should_queue_for_quiet_hours(settings_doc, self.settings, now)
+        if queued and queue_at:
+            repo.schedule_next_evaluation(user_id, self.persona_id, now=now, fixed_at=queue_at, reason="quiet_hours")
+            repo._set(user_id, self.persona_id, {"queued_until": queue_at})
+            self._event("proactive_quiet_queued", {"user_id": user_id, "until": str(queue_at)})
+            return {"user_id": user_id, "scheduled": False, "reason": "quiet_hours_queued"}
+
+        decision = self._decision(settings_doc, now, check_quiet=False)
         if not decision.allow:
-            return {"user_id": user_id, "scheduled": False, "reason": decision.reason}
+            hint = 30 if decision.reason in {"awaiting_reply", "hourly_cap", "daily_cap", "weekly_cap"} else None
+            return self._skip_evaluation(repo, user_id, reason=decision.reason, now=now, hint_minutes=hint)
 
         conv = self._primary_conversation(user_id)
+        if conv.get("status") not in {None, "active"}:
+            return self._skip_evaluation(repo, user_id, reason="conversation_inactive", now=now)
         if self.runtime.job_repo.get_open_for_conversation(conv["conversation_id"]):
-            return {"user_id": user_id, "scheduled": False, "reason": "conversation_busy"}
+            return self._skip_evaluation(repo, user_id, reason="conversation_busy", now=now)
         if self.runtime.conversation_repo.count_messages(conv["conversation_id"]) == 0:
-            return {"user_id": user_id, "scheduled": False, "reason": "no_conversation_yet"}
+            return self._skip_evaluation(repo, user_id, reason="no_conversation_yet", now=now)
         ctx = self.runtime.conversation_context_repo.get(conv["conversation_id"]) or {}
         if ctx.get("proactive_opt_out"):
             repo.opt_out(user_id, self.persona_id, reason="conversation_request")
             return {"user_id": user_id, "scheduled": False, "reason": "not_opted_in"}
 
+        analyze_n = int(settings_doc.get("analyze_recent_messages") or 10)
+        recent = self.runtime.conversation_repo.recent_messages(conv["conversation_id"], limit=analyze_n)
+        analysis = analyze_recent_conversation(recent, conversation_context=ctx, limit=analyze_n)
+        profile_card = self.runtime.user_memory.profile_card(self.persona_id, user_id, limit=20)
+        user_topics = self.runtime.topic_repo.list(user_id, self.persona_id)
         trigger = select_trigger(
             user_id=user_id,
             persona_id=self.persona_id,
             now=now,
             local_now=decision.local_now or now,
             settings_doc=settings_doc,
-            profile_card=self.runtime.user_memory.profile_card(self.persona_id, user_id, limit=20),
+            profile_card=profile_card,
             due_followups=self._due_followups(user_id, now),
             conversation_context=ctx,
-            user_topics=self.runtime.topic_repo.list(user_id, self.persona_id),
+            user_topics=user_topics,
             last_message_at=conv.get("last_message_at"),
         )
-        if not trigger:
-            return {"user_id": user_id, "scheduled": False, "reason": "no_grounded_reason"}
-        type_decision = self._decision(settings_doc, now, trigger["proactive_type"])
+        candidates = [trigger] if trigger else []
+        asked = self.runtime.topic_repo.collect_asked_questions(user_id, self.persona_id)
+        last_outbound = None
+        for h in reversed(settings_doc.get("outbound_history") or []):
+            if isinstance(h, dict) and h.get("outbound_id"):
+                last_outbound = str(h.get("topic") or "")
+                break
+
+        engagement = decide_proactive_engagement(
+            llm=getattr(self.runtime, "llm", None),
+            prompt_repo=getattr(self.runtime, "prompt_repo", None) or getattr(self.runtime.services, "prompt_repo", None),
+            analysis=analysis,
+            settings_doc=settings_doc,
+            app_settings=self.settings,
+            trigger_candidates=candidates,
+            asked_questions=asked,
+            last_outbound_text=last_outbound,
+        )
+        if not engagement.should_send or engagement.strategy == "NO_MESSAGE":
+            return self._skip_evaluation(
+                repo,
+                user_id,
+                reason=engagement.reason or "no_message",
+                now=now,
+                hint_minutes=engagement.next_evaluation_minutes,
+            )
+
+        brief_payload = build_brief_from_decision(engagement, candidates)
+        if not brief_payload:
+            return self._skip_evaluation(repo, user_id, reason="brief_build_failed", now=now)
+
+        type_decision = self._decision(settings_doc, now, brief_payload["proactive_type"], check_quiet=False)
         if not type_decision.allow:
-            return {"user_id": user_id, "scheduled": False, "reason": type_decision.reason}
+            return self._skip_evaluation(repo, user_id, reason=type_decision.reason, now=now)
 
         current_state = self._current_life_state(now)
-        brief = self._build_brief(trigger, current_state=current_state)
+        brief = self._build_brief(brief_payload, current_state=current_state)
         job, key = self._create_job(
             user_id=user_id,
             conv=conv,
@@ -233,7 +319,8 @@ class ProactivePlanner:
             current_state=current_state,
         )
         if not job:
-            return {"user_id": user_id, "scheduled": False, "reason": "duplicate", "idempotency_key": key}
+            self._event("proactive_duplicate_prevented", {"user_id": user_id, "idempotency_key": key})
+            return self._skip_evaluation(repo, user_id, reason="duplicate", now=now)
         self._event(
             "proactive_scheduled",
             {
@@ -242,6 +329,7 @@ class ProactivePlanner:
                 "job_id": job["job_id"],
                 "proactive_type": brief["proactive_type"],
                 "topic": brief.get("topic"),
+                "strategy": engagement.strategy,
             },
         )
         return {"user_id": user_id, "scheduled": True, "reason": "scheduled", "job": job}
@@ -373,6 +461,15 @@ class ProactivePlanner:
             topic=(brief.get("history_key") or brief.get("subject") or brief.get("topic")),
             now=now,
         )
+        topic = brief.get("topic")
+        if topic and brief.get("suggested_opener"):
+            self.runtime.topic_repo.record_question(
+                user_id,
+                job["persona_id"],
+                str(topic),
+                str(brief.get("suggested_opener")),
+                introduced_by="persona",
+            )
         self._event(
             "proactive_sent",
             {

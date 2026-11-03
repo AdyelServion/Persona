@@ -215,11 +215,17 @@ def _public_settings(doc: dict[str, Any]) -> dict[str, Any]:
         "timezone": doc.get("timezone"),
         "quiet_start": doc.get("quiet_start"),
         "quiet_end": doc.get("quiet_end"),
+        "quiet_hours_enabled": bool(doc.get("quiet_hours_enabled", True)),
         "daily_limit": doc.get("daily_limit"),
         "weekly_limit": doc.get("weekly_limit"),
+        "hourly_limit": doc.get("hourly_limit"),
+        "interval_options_minutes": list(doc.get("interval_options_minutes") or []),
+        "allow_contextual_followups": bool(doc.get("allow_contextual_followups", True)),
+        "allow_new_topic_introduction": bool(doc.get("allow_new_topic_introduction", True)),
         "paused_until": _iso(doc.get("paused_until")),
         "muted_types": list(doc.get("muted_types") or []),
         "last_outbound_at": _iso(doc.get("last_outbound_at")),
+        "next_evaluation_at": _iso(doc.get("next_evaluation_at")),
         "awaiting_reply": bool(doc.get("unanswered_outbound_id")),
     }
 

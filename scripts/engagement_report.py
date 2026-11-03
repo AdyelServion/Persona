@@ -24,6 +24,11 @@ from persona_runtime.db.time_utils import utcnow  # noqa: E402
 
 EVENT_TYPES = (
     "user_created",
+    "proactive_evaluated",
+    "proactive_skipped",
+    "proactive_interval_selected",
+    "proactive_quiet_queued",
+    "proactive_duplicate_prevented",
     "proactive_scheduled",
     "proactive_sent",
     "proactive_replied",
@@ -49,8 +54,14 @@ def build_report(db, *, days: float = 7.0) -> dict[str, Any]:
     by_type: dict[str, Counter] = defaultdict(Counter)
     suppressed: Counter = Counter()
     cancelled: Counter = Counter()
+    skipped: Counter = Counter()
+    intervals: list[int] = []
     bubbles: list[int] = []
     for e in events:
+        if e["event_type"] == "proactive_skipped":
+            skipped[e.get("reason") or "unknown"] += 1
+        if e["event_type"] == "proactive_interval_selected" and e.get("minutes"):
+            intervals.append(int(e["minutes"]))
         if e["event_type"] in {"proactive_sent", "proactive_replied"} and e.get("proactive_type"):
             by_type[e["proactive_type"]][e["event_type"]] += 1
         if e["event_type"] == "proactive_suppressed":
@@ -78,6 +89,8 @@ def build_report(db, *, days: float = 7.0) -> dict[str, Any]:
             for t, c in sorted(by_type.items())
         },
         "suppressed_reasons": dict(suppressed.most_common()),
+        "skipped_reasons": dict(skipped.most_common()),
+        "interval_minutes_selected": intervals,
         "cancelled_reasons": dict(cancelled.most_common()),
         "users": {
             "total": db[COLLECTION_NAMES["app_users"]].count_documents({}),

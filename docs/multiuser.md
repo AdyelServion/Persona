@@ -96,18 +96,25 @@ These rules are in `persona_runtime/outbound/`.
 
 - Off by default, both globally (`PROACTIVE_OUTBOUND_ENABLED`) and per user (opt-in
   checkbox on New chat, or the ⚙ settings).
-- Caps are **1 per day and 3 per week**, with a minimum gap (`PROACTIVE_MIN_GAP_HOURS`)
-  that doubles with each backoff level.
-- Quiet hours apply in the user's own timezone (default 22:00–08:00).
+- Engagement policy **v2** (see `ProactiveSettings.engagement_policy_version`) uses
+  per-user **evaluation scheduling**: randomized intervals from
+  `[5,10,15,20,25,30,35,40,45,50,60]` minutes (`next_evaluation_at`, persisted in Mongo).
+  Defaults: **2/hour, 8/day, 28/week**, `PROACTIVE_MIN_GAP_MINUTES=5` (legacy v1 docs still
+  use hour-based gap until upgraded on read).
+- Quiet hours apply in the user's own timezone (default 22:00–08:00). Evaluations during quiet
+  hours are **queued** until quiet end (not sent immediately).
 - Users can pause or mute message types.
 - Saying something like "stop messaging me first" in chat opts the user out immediately
   and cancels pending jobs.
 
-**When Sarah messages first.** Gates are checked in this order: globally disabled, not opted
-in, paused, type muted, **awaiting reply**, already scheduled, quiet hours, min gap /
-backoff, daily cap, weekly cap.
+**When Sarah messages first.** The worker loads users with `next_evaluation_at <= now`
+(not a fixed global scan interval). Gates: globally disabled, not opted in, paused, type
+muted, **awaiting reply**, already scheduled, min gap / backoff, hourly / daily / weekly caps,
+consecutive-initiation cap (v2). Quiet hours defer evaluation.
 
-Then a reason is chosen, in priority order:
+Each evaluation analyzes the last 5–10 messages, memories, and topic state, collects rule
+based trigger **candidates**, then an LLM structured decision (`proactive_engagement_decision`)
+chooses send/skip/strategy (rule engine fallback in tests). Reasons are chosen in priority order:
 
 1. `event_followup`: asks how a past event went, without assuming the outcome.
 2. `conversation_resumption`
@@ -125,7 +132,7 @@ she carries the topic forward over several turns.
 
 **Safety.**
 
-- Jobs are idempotent (`{user}:{type}:{subject}:{local_date}`) and expire after
+- Jobs are idempotent (`{user}:{type}:{subject}:{eval_bucket}`) and expire after
   `PROACTIVE_JOB_TTL_HOURS`.
 - At execution time the engine re-checks ownership, expiry, every gate, and whether the
   user has spoken first. A user message cancels any scheduled outbound job.
@@ -169,7 +176,8 @@ Django (browser-facing, CSRF): `/api/users/`, `/api/users/new/`, `/api/users/res
 
 ## Analytics
 
-The `Events` collection records `user_created`, `proactive_scheduled`, `proactive_sent`,
+The `Events` collection records `proactive_evaluated`, `proactive_skipped`,
+`proactive_interval_selected`, `proactive_quiet_queued`, `user_created`, `proactive_scheduled`, `proactive_sent`,
 `proactive_replied`, `proactive_ignored`, `proactive_suppressed`, `proactive_cancelled`,
 `proactive_blocked`, `proactive_opt_out`, `proactive_settings_changed` and `memory_deleted`.
 

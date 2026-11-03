@@ -163,6 +163,10 @@ def ensure_indexes(db: Database | None = None) -> None:
         [("user_id", ASCENDING), ("persona_id", ASCENDING)], unique=True
     )
     proactive_settings.create_index([("enabled", ASCENDING)])
+    proactive_settings.create_index(
+        [("persona_id", ASCENDING), ("enabled", ASCENDING), ("next_evaluation_at", ASCENDING)],
+        name="proactive_due_evaluations",
+    )
 
     messages = db[COLLECTION_NAMES["messages"]]
     messages.create_index([("conversation_id", ASCENDING), ("timestamp", ASCENDING)])

@@ -241,6 +241,10 @@ class ScriptedLLM:
                 "length": "short",
             }
 
+        if "decide if sarah should proactively message" in sys_l:
+            # Force deterministic rule-based decision in tests (see decide_proactive_engagement).
+            return {"defer_to_rule_engine": True}
+
         if "sarah is messaging this user first" in sys_l:
             from persona_runtime.outbound.briefs import brief_from_prompt_context, fallback_messages
 

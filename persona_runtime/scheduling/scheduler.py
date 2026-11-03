@@ -56,6 +56,12 @@ class ResponseScheduler:
                 "proactive_opt_out", {"user_id": user_id, "persona_id": persona_id, "via": "message"}
             )
         answered = self.proactive_settings_repo.record_user_reply(user_id, persona_id)
+        try:
+            self.proactive_settings_repo.schedule_next_evaluation(
+                user_id, persona_id, reason="user_message"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("proactive_reschedule_failed: %s", exc)
         if answered and self.conversation_context_repo is not None:
             self.conversation_context_repo.get_or_create(
                 conversation_id=conversation_id, persona_id=persona_id, user_id=user_id

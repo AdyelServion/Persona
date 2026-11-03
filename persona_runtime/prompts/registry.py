@@ -441,6 +441,25 @@ PROMPT_SEEDS: list[dict[str, Any]] = [
         "output_schema": {"messages": "array"},
     },
     {
+        "name": "proactive_engagement_decision",
+        "purpose": "Decide whether Sarah should send a proactive message and how",
+        "version": 1,
+        "temperature": 0.35,
+        "system_prompt_template": (
+            "You decide if Sarah should proactively message a user she already chats with.\n"
+            "Return JSON only with keys: should_send (bool), strategy (one of CONTINUE_TOPIC, "
+            "FOLLOW_UP_MEMORY, EXPLORE_INTEREST, ASK_CASUAL_QUESTION, INTRODUCE_NEW_TOPIC, NO_MESSAGE), "
+            "topic (string|null), reason (string), context_reference (string|null), message_intent (string|null), "
+            "suggested_message (string|null, casual Gen Z texting, no emojis), confidence (0-1), "
+            "next_evaluation_minutes (int|null from 5-60).\n"
+            "Use ONLY candidates and analysis provided. Never invent user facts or event outcomes.\n"
+            "If Sarah's last question is still open, should_send should usually be false.\n"
+            "If nothing meaningful to say, use NO_MESSAGE."
+        ),
+        "input_schema": {"payload": "object"},
+        "output_schema": {"decision": "object"},
+    },
+    {
         "name": "proactive_generation",
         "purpose": "Sarah starts a conversation herself (opted-in proactive outreach)",
         "version": 3,

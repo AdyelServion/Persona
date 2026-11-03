@@ -90,6 +90,19 @@ Design, API, limits and tests are in [docs/multiuser.md](docs/multiuser.md).
 - The scan runs in the web worker thread. With multiple instances, idempotency keys prevent
   duplicate jobs, but every instance runs the scan.
 
+## Proactive engagement engine v2 (2026-11-03)
+
+- **Scheduling:** `ProactiveSettings.next_evaluation_at` + randomized intervals
+  (`persona_runtime/outbound/schedule.py`); worker uses `list_due` (default scan poll 2 min).
+- **Policy v2:** hourly/daily/weekly caps, minute gap, consecutive initiation limit;
+  auto-upgrade on read (`engagement_policy_version=2`).
+- **Decision:** `context.py`, `decision.py` (LLM + rule fallback), `quality.py`.
+- **Planner:** `evaluate_user` pipeline; quiet-hour queue; events for eval/skip/interval.
+- **Topics:** catalogue categories, `asked_questions` on `UserPersonaTopics`.
+- **Tests:** `tests/test_proactive_engagement_v2.py`; extended `test_proactive_engine.py`.
+- **Docs:** `docs/multiuser.md`, `.env.example`, `proactive_engagement_qa_report.md`,
+  `proactive_engagement_issues.md`.
+
 ---
 
 # Persona consistency QA system

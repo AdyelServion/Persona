@@ -19,59 +19,88 @@ from persona_runtime.db.time_utils import ensure_utc, utcnow
 
 TOPIC_CATALOGUE: dict[str, dict[str, Any]] = {
     "work": {
+        "category": "everyday",
         "keywords": ("work", "job", "office", "career", "boss", "colleague", "meeting", "project", "shift"),
         "starter": "what a normal workday looks like for them",
     },
     "hobbies": {
+        "category": "hobbies",
         "keywords": ("hobby", "hobbies", "photography", "gaming", "painting", "drawing", "reading", "baking",
                      "knitting", "chess", "guitar", "piano", "free time", "spare time"),
         "starter": "what they get up to in their free time",
     },
+    "reading": {
+        "category": "entertainment",
+        "keywords": ("book", "books", "reading", "novel", "author", "kindle", "audiobook"),
+        "starter": "anything they've been reading lately",
+    },
+    "cooking": {
+        "category": "hobbies",
+        "keywords": ("cook", "cooking", "recipe", "bake", "baking", "meal prep"),
+        "starter": "whether they enjoy cooking or mostly order in",
+    },
+    "art": {
+        "category": "hobbies",
+        "keywords": ("art", "artist", "gallery", "museum", "sketch", "canvas"),
+        "starter": "whether they're into any kind of art",
+    },
     "music": {
+        "category": "entertainment",
         "keywords": ("music", "song", "album", "band", "gig", "concert", "playlist", "listen", "spotify"),
         "starter": "whether they listen to music while working or prefer silence",
     },
     "movies": {
+        "category": "entertainment",
         "keywords": ("movie", "movies", "film", "films", "series", "show", "netflix", "watching", "cinema", "tv"),
         "starter": "anything good they've watched lately",
     },
     "sports": {
+        "category": "hobbies",
         "keywords": ("football", "cricket", "match", "team", "league", "tennis", "basketball", "f1", "rugby", "golf"),
         "starter": "whether they follow any sport",
     },
     "travel": {
+        "category": "discovery",
         "keywords": ("travel", "trip", "holiday", "vacation", "flight", "abroad", "beach", "mountains", "visit"),
         "starter": "a place they've always wanted to visit",
     },
     "food": {
+        "category": "everyday",
         "keywords": ("food", "cook", "cooking", "dinner", "lunch", "restaurant", "recipe", "eat", "pizza", "coffee", "tea"),
         "starter": "the best thing they've eaten recently",
     },
     "weekends": {
+        "category": "everyday",
         "keywords": ("weekend", "weekends", "saturday", "sunday"),
         "starter": "what a usual weekend looks like for them",
     },
     "lifestyle": {
+        "category": "playful",
         "keywords": ("morning", "routine", "night owl", "early bird", "sleep", "evening", "after work"),
         "starter": "whether they're a morning person or a night owl",
     },
     "fitness": {
+        "category": "hobbies",
         "keywords": ("gym", "run", "running", "hike", "hiking", "cycling", "yoga", "workout", "swim", "fitness"),
         "starter": "whether they do anything to stay active",
     },
     "technology": {
+        "category": "hobbies",
         "keywords": ("tech", "phone", "app", "computer", "laptop", "ai", "gadget", "coding", "software"),
         "starter": "a gadget or app they couldn't live without",
     },
     "cars": {
+        "category": "hobbies",
         "keywords": ("car", "cars", "drive", "driving", "road trip", "honda", "toyota", "engine"),
         "starter": "whether they enjoy driving or road trips",
     },
     "everyday": {
+        "category": "everyday",
         "keywords": ("today", "day", "week", "busy", "tired", "errands"),
         "starter": "how their week has been going",
     },
     "social_media": {
+        "category": "entertainment",
         "keywords": ("instagram", "post", "posted", "tiktok", "content", "reel", "photo i shared"),
         "starter": "what kind of content they enjoy online",
     },
@@ -140,6 +169,8 @@ class UserTopicRepository:
             "cooldown_until": None,
             "declined": False,
             "subjects": [],
+            "asked_questions": [],
+            "introduced_by": None,
             "created_at": now,
             "updated_at": now,
         }
@@ -187,6 +218,34 @@ class UserTopicRepository:
             updates["subjects"] = subjects[-10:]
         self.col.update_one({"_id": doc["_id"]} if "_id" in doc else {"user_id": user_id, "persona_id": persona_id, "topic": topic}, {"$set": updates})
         return {**doc, **updates}
+
+    def record_question(
+        self,
+        user_id: str,
+        persona_id: str,
+        topic: str,
+        question: str,
+        *,
+        introduced_by: str = "persona",
+    ) -> None:
+        now = utcnow()
+        doc = self._ensure(user_id, persona_id, topic, now)
+        qs = list(doc.get("asked_questions") or [])
+        q = (question or "").strip()
+        if q and q not in qs:
+            qs.append(q)
+        self.col.update_one(
+            {"user_id": user_id, "persona_id": persona_id, "topic": topic},
+            {"$set": {"asked_questions": qs[-20:], "introduced_by": introduced_by, "updated_at": now}},
+        )
+
+    def collect_asked_questions(self, user_id: str, persona_id: str) -> list[str]:
+        out: list[str] = []
+        for doc in self.list(user_id, persona_id):
+            for q in doc.get("asked_questions") or []:
+                if q and q not in out:
+                    out.append(str(q))
+        return out
 
     def mark_declined(self, user_id: str, persona_id: str, topic: str) -> None:
         now = utcnow()
