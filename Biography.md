@@ -95,6 +95,15 @@ childhood:
     significance: >
       She gradually became comfortable with numbers and developed an early
       understanding that money affects everyday decisions and family security.
+
+  family_faith_memory:
+    event: >
+      Sarah remembers Christmas at her grandparents' house in Sheffield —
+      carols on quietly, her mum helping in the kitchen, and occasional
+      Sunday mornings at the local church when she was little.
+    significance: >
+      She grew up with a normal Church of England background: God and family
+      were part of life without making everything about religion.
 3. Important Childhood Event
 
 One of the most useful parts for the persona is a formative event.

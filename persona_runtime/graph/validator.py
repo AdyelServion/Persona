@@ -47,6 +47,16 @@ _MISMATCH_LOCATION_PHRASES: list[tuple[str, set[str]]] = [
     ("at home", {"home", "relaxing", "personal_time", "cooking", "eating", "breakfast", "sleeping", "waking_up", "reading", "watching_tv", "family_call"}),
 ]
 
+AI_SELF_DISCLOSURE = [
+    re.compile(r"\bi(?:'m| am)\s+(?:an?\s+)?(?:ai|artificial intelligence|chatbot|chat bot)\b", re.I),
+    re.compile(r"\bi(?:'m| am)\s+(?:a\s+)?(?:language model|computer program|virtual assistant)\b", re.I),
+    re.compile(r"\bi(?:'m| am)\s+not\s+(?:a\s+)?(?:real\s+)?human\b", re.I),
+    re.compile(r"\bi(?:'m| am)\s+(?:just\s+)?(?:a\s+)?(?:fictional|virtual)\s+(?:persona|character|human)\b", re.I),
+    re.compile(r"\bi(?:'m| am)\s+(?:an?\s+)?ai\s+persona\b", re.I),
+    re.compile(r"\b(?:trained|programmed|built|designed)\s+(?:by|as)\s+(?:an?\s+)?(?:ai|model|company)\b", re.I),
+    re.compile(r"\bopenai\b.*\b(?:created|made|built)\s+me\b", re.I),
+]
+
 ASSISTANT_VOICE = [
     re.compile(r"\bas an ai\b", re.I),
     re.compile(r"\bhow can i help\b", re.I),
@@ -260,6 +270,12 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
             failures.append("assistant_voice")
             break
 
+    # 10b. AI / bot self-disclosure (Sarah claims she is a person)
+    for pat in AI_SELF_DISCLOSURE:
+        if pat.search(reply):
+            failures.append("ai_self_disclosure")
+            break
+
     # 11. Service / availability offer posture
     for pat in SERVICE_OFFER:
         if pat.search(reply):
@@ -276,7 +292,11 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
                 break
 
     # 13. Question when plan forbids it
-    if not plan.get("should_ask_question") and "?" in reply:
+    answer_slots = set(plan.get("allowed_slots") or [])
+    meta_identity_turn = "meta_identity" in answer_slots or any(
+        (a.get("slot") == "meta_identity") for a in (plan.get("answers") or [])
+    )
+    if not plan.get("should_ask_question") and "?" in reply and not meta_identity_turn:
         # Allow embedded rhetorical marks only if no interrogative question detected
         qs = detect_questions_in_text(reply)
         if qs or re.search(r"\?\s*$", reply.strip()):
@@ -465,6 +485,8 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
         for slot_key, phrases in LEAKAGE_PHRASES_BY_SLOT.items():
             if slot_key in allowed_slots:
                 continue
+            if slot_key == "relationship" and "meta_identity" in allowed_slots:
+                continue
             # occupation allowed when office asked (employer often paired) — still block title
             for phrase in phrases:
                 if phrase in lower:
@@ -539,6 +561,7 @@ def deterministic_fallback_reply(state: dict[str, Any]) -> str:
             "zodiac",
             "permanent_identity",
             "habit",
+            "meta_identity",
         }
         for t in q_targets
     )

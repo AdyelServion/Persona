@@ -25,7 +25,9 @@ REQUEST_DEPTHS = ["basic", "intermediate", "advanced", "expert"]
 HIGH_STAKES = {"medical", "legal", "investment", "tax"}
 
 _CLASSIFY_SPEECH = {"question", "request", "self_disclosure", "unclear", "continuation"}
-_PERSONA_TARGETS = set(NOW_TARGETS) | set(EMPLOYMENT_TARGETS) | set(PROFILE_TARGETS) | {"habit"}
+_PERSONA_TARGETS = (
+    set(NOW_TARGETS) | set(EMPLOYMENT_TARGETS) | set(PROFILE_TARGETS) | {"habit", "meta_identity"}
+)
 
 _ARTIFACT_VERB = re.compile(
     r"\b(?:write|code|build|create|make|generate|draft|implement|program|debug|fix)\b", re.I

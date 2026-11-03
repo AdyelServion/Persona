@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
+from persona_runtime.graph.meta_identity import is_meta_identity_question
 from persona_runtime.graph.reality import (
     QuestionTarget,
     _split_question_chunks,
@@ -36,6 +37,7 @@ QuestionSlot = Literal[
     "leave_work",
     "arrive_home",
     "transport",
+    "meta_identity",
     "none",
 ]
 
@@ -341,6 +343,7 @@ _SLOT_TO_LEGACY: dict[str, QuestionTarget] = {
     "leave_work": "none",
     "arrive_home": "none",
     "transport": "none",
+    "meta_identity": "meta_identity",
     "none": "none",
 }
 
@@ -372,6 +375,7 @@ def _slot_meta(slot: QuestionSlot) -> tuple[TimeScope, QuestionKind, FactSource]
         "leave_work": ("future", "experience", "life_plan"),
         "arrive_home": ("future", "experience", "life_plan"),
         "transport": ("present", "established_fact", "canonical"),
+        "meta_identity": ("present", "established_fact", "canonical"),
         "none": ("present", "established_fact", "none"),
     }
     return mapping[slot]
@@ -398,6 +402,8 @@ def classify_slot(
 
     if _HYPOTHETICAL.search(norm):
         return "hypothetical"
+    if is_meta_identity_question(raw):
+        return "meta_identity"
     if _USER_MEMORY.search(norm):
         return "user_memory"
     if _TIME_NOW.search(norm):

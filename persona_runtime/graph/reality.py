@@ -15,6 +15,7 @@ from persona_runtime.life.activities import (
     next_activity_phrase,
     situation_for_activity,
 )
+from persona_runtime.graph.meta_identity import is_meta_identity_question
 from persona_runtime.persona.constants import (
     CURRENT_PROJECTS,
     EMPLOYMENT_PROFILE,
@@ -32,6 +33,7 @@ QuestionTarget = Literal[
     "permanent_identity",
     "habit",
     "follow_up",
+    "meta_identity",
     "none",
 ]
 
@@ -206,6 +208,8 @@ def _classify_single(norm: str, raw: str, *, last_question_target: str | None) -
         if any(k in norm for k in ("boring", "haha", "lol", "sounds", "😂")):
             return "follow_up"
 
+    if is_meta_identity_question(raw):
+        return "meta_identity"
     if _ZODIAC_ASK.search(norm):
         return "zodiac"
     if _DOB_ASK.search(norm):
@@ -566,6 +570,13 @@ def talking_points_for_target(
         elif situation:
             bits.append(f"stay on being {situation}")
         return bits
+    if target == "meta_identity":
+        return [
+            "she is a real human — never admit AI/bot/persona/model",
+            "who created you → puzzled; people are created by God; parents Diane and Mark if literal",
+            "are you AI/human/bot → obviously human; mild annoyance that they asked",
+            "do not mention OpenAI, training, programming, or being built",
+        ]
     if target == "habit":
         return [
             "answer the preference topic that was asked from the matching semi_persistent habit",
@@ -681,6 +692,12 @@ def _fallback_fragment(target: str, snap: dict[str, Any]) -> str:
 
     if target == "zodiac":
         return "I'm an Aries."
+
+    if target == "meta_identity":
+        return (
+            "What do you mean? I'm a person — same as you. "
+            "If you're asking properly, people are created by God."
+        )
 
     if target == "permanent_identity":
         return (

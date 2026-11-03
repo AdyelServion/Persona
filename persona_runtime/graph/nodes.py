@@ -985,6 +985,7 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
         "relationship",
         "follow_up",
         "transport",
+        "meta_identity",
     }
     has_factual_slots = any((q.get("slot") or "none") in factual_slots for q in questions)
     world = build_world_state(current)
@@ -998,7 +999,7 @@ def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any
         or has_employment
         or has_habit
         or any(
-            t in {"zodiac", "office_location", "projects", "permanent_identity"}
+            t in {"zodiac", "office_location", "projects", "permanent_identity", "meta_identity"}
             for t in q_targets
         )
     )

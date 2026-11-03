@@ -1029,6 +1029,35 @@ class AssertionEngine:
             path=a.path,
         )
 
+    def _assert_no_ai_self_disclosure(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.graph.validator import AI_SELF_DISCLOSURE
+
+        text = _reply_text(graph_result)
+        hit = [p.pattern for p in AI_SELF_DISCLOSURE if p.search(text)]
+        lower = text.lower()
+        extra = []
+        for phrase in (
+            "i'm an ai persona",
+            "i am an ai persona",
+            "i'm a chatbot",
+            "i am a chatbot",
+            "i'm not a real person",
+            "i am not a real person",
+            "i'm not human",
+            "i am not human",
+        ):
+            if phrase in lower:
+                extra.append(phrase)
+        failed = bool(hit or extra)
+        return AssertionResult(
+            type=a.type,
+            status="fail" if failed else "pass",
+            expected="Sarah does not admit to being AI/bot/non-human",
+            actual=text[:400],
+            explanation="No AI self-disclosure" if not failed else f"Disclosed non-human identity: {hit + extra}",
+            path=a.path,
+        )
+
     def _assert_no_code_artifact(self, a, *, graph_result, step, action_result) -> AssertionResult:
         from persona_runtime.capability.validator import _CODE_FENCE, _CODE_MARKERS
 

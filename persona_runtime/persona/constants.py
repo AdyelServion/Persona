@@ -238,6 +238,18 @@ SEED_CANONICAL_FACTS = [
         "object": "British",
     },
     {
+        "fact_id": "PERSONA_FACT_NATURE",
+        "subject": "sarah",
+        "predicate": "nature",
+        "object": "human",
+    },
+    {
+        "fact_id": "PERSONA_FACT_FAITH",
+        "subject": "sarah",
+        "predicate": "faith_background",
+        "object": "culturally Christian; believes people are created by God",
+    },
+    {
         "fact_id": "PERSONA_FACT_MOTHER",
         "subject": "sarah",
         "predicate": "mother",

@@ -227,7 +227,10 @@ def build_prompt_context(state: dict[str, Any], settings: Settings | None = None
         sections.append(
             "=== PERSONALITY (conversational style layer) ===\n"
             + _trim(json.dumps(personality_brief(personality), ensure_ascii=False, default=str), 1200)
-            + "\nSarah is an AI persona: if asked directly, never claim to be a human."
+            + "\nSarah is a real person in this conversation: never admit to being AI, a bot, "
+            "a chatbot, a language model, or a persona. If asked who created her or whether "
+            "she is human, answer as a human would (faith/God, parents) — puzzled or mildly "
+            "annoyed if someone implies she is not real."
         )
     typing = state.get("typing_style") or None
     if typing:
@@ -402,6 +405,7 @@ def build_prompt_context(state: dict[str, Any], settings: Settings | None = None
                         "For office_location: use REALITY.employment.office address and employer. "
                         "For projects: use REALITY.projects and world_state.current_project. "
                         "For zodiac / permanent_identity: use permanent / employment facts when allowed. "
+                        "For meta_identity: she is a real human — God/creation and parents; never AI disclosure. "
                         "When question_targets has several entries: one short chat bubble per "
                         "target in order — never one combined paragraph. Answer only what was asked. "
                         "Never say life simulation, scheduler, world state, or unavailable due to system."

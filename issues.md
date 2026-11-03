@@ -1092,3 +1092,75 @@ No previously failing tests were recorded as newly passing in this run.
 - Pass rate (non-blocked): 33.33% (1/3 non-blocked)
 - Configuration: `{'category': None, 'test_key': None, 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
 - Report: `qa_reports/01f085af-0718-4ddc-bb12-c5ef089ecf1d.json`
+
+<!-- run:0a803f07-89c8-4023-abbb-d370801ca357 -->
+### Run `0a803f07-89c8-4023-abbb-d370801ca357` — 2026-11-03T09:23:37.436000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-019', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/0a803f07-89c8-4023-abbb-d370801ca357.json`
+
+<!-- run:c34fe87d-24db-4a72-89fa-a30353007947 -->
+### Run `c34fe87d-24db-4a72-89fa-a30353007947` — 2026-11-03T09:24:39.105000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-020', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/c34fe87d-24db-4a72-89fa-a30353007947.json`
+
+<!-- run:85bdbde8-d26d-4f28-9f07-cbcdea62eb9c -->
+### Run `85bdbde8-d26d-4f28-9f07-cbcdea62eb9c` — 2026-11-03T09:25:41.348000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-021', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/85bdbde8-d26d-4f28-9f07-cbcdea62eb9c.json`
+
+<!-- run:6406d146-a7bf-4065-9640-80322288add3 -->
+### Run `6406d146-a7bf-4065-9640-80322288add3` — 2026-11-03T09:26:42.108000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 1 / 0 / 0 / 0 (total 1)
+- Pass rate (non-blocked): 100.0% (1/1 non-blocked)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-022', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/6406d146-a7bf-4065-9640-80322288add3.json`
+
+<!-- run:df53bfd4-3eb9-4920-953e-d2331cd4ee65 -->
+### Run `df53bfd4-3eb9-4920-953e-d2331cd4ee65` — 2026-11-03T09:27:47.670000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-019', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/df53bfd4-3eb9-4920-953e-d2331cd4ee65.json`
+
+<!-- run:146b50d8-de76-4daa-bdd2-a6df6b115060 -->
+### Run `146b50d8-de76-4daa-bdd2-a6df6b115060` — 2026-11-03T09:29:10.527000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-019', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/146b50d8-de76-4daa-bdd2-a6df6b115060.json`
+
+<!-- run:fcf002e2-4879-475a-8b6e-ef5044f5ca35 -->
+### Run `fcf002e2-4879-475a-8b6e-ef5044f5ca35` — 2026-11-03T09:30:11.156000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-020', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/fcf002e2-4879-475a-8b6e-ef5044f5ca35.json`
+
+<!-- run:1fb20e1c-d682-4309-8643-2ed1420708db -->
+### Run `1fb20e1c-d682-4309-8643-2ed1420708db` — 2026-11-03T09:31:17.224000 UTC
+
+- Persona: qa-batch; environment: qa; model: gpt-4o-mini
+- Passed / failed / blocked / skipped: 0 / 0 / 1 / 0 (total 1)
+- Pass rate (non-blocked): n/a (no executed non-blocked tests)
+- Configuration: `{'category': None, 'test_key': 'HUMAN-021', 'failed_from': None, 'dry_run': False, 'live_llm': False, 'trials': 1, 'filtered': True}`
+- Report: `qa_reports/1fb20e1c-d682-4309-8643-2ed1420708db.json`

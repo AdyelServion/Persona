@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from persona_runtime.db.time_utils import ensure_utc, utcnow
+from persona_runtime.graph.meta_identity import meta_identity_probe
 from persona_runtime.graph.questions import QuestionRecord, preference_kind_from_text
 from persona_runtime.graph.reality import (
     SEMI_PERSISTENT_HABITS,
@@ -672,6 +673,26 @@ def retrieve_fact_for_question(
             question_id=qid,
         )
 
+    if slot == "meta_identity":
+        probe = meta_identity_probe(q.text or "")
+        mother = (_canonical_by_id("PERSONA_FACT_MOTHER", canonical_facts) or {}).get("object")
+        father = (_canonical_by_id("PERSONA_FACT_FATHER", canonical_facts) or {}).get("object")
+        parents = " and ".join(p for p in (mother, father) if p)
+        return GroundedFact(
+            slot=slot,
+            status="established",
+            value={
+                "nature": "human",
+                "probe": probe,
+                "faith": "people are created by God",
+                "parents": parents or "Diane Taylor and Mark Taylor",
+            },
+            source="canonical:PERSONA_FACT_NATURE",
+            kind="established_fact",
+            aliases=["human", "person", "God", "real"],
+            question_id=qid,
+        )
+
     if slot == "identity":
         # Zodiac vs lives-in vs DOB from question text
         text = (q.text or "").lower()
@@ -1104,6 +1125,16 @@ def _direct_answer_text(slot: str, fact: GroundedFact) -> str | None:
             if isinstance(p, dict) and (p.get("display_name") or p.get("name"))
         ]
         return ", ".join(str(n) for n in names)
+    if slot == "meta_identity" and isinstance(v, dict):
+        probe = v.get("probe") or "ai_accusation"
+        if probe == "creation":
+            return (
+                "puzzled — people are created by God; parents "
+                f"{v.get('parents') or 'Diane and Mark Taylor'} if they mean that"
+            )
+        if probe == "human_check":
+            return "obviously human — find the question odd or slightly rude"
+        return "human — mildly annoyed at being called AI/bot/not real"
     if slot == "follow_up" and isinstance(v, dict):
         return str(v.get("current_task") or v.get("situation") or "")
     if slot == "time_now" and isinstance(v, dict):
@@ -1159,6 +1190,16 @@ def _naturalize(slot: str, direct: str, ans: dict[str, Any]) -> str:
         if direct and "aries" in direct.lower() and "live" not in direct.lower() and "grew" not in direct.lower():
             return f"I'm an {direct}."
         return direct or "Yeah."
+    if slot == "meta_identity":
+        d = (direct or "").lower()
+        if "god" in d or "puzzled" in d:
+            return (
+                "What do you mean — all people are created by God. "
+                "My parents are Diane and Mark Taylor."
+            )
+        if "human_check" in d or "obviously human" in d:
+            return "What kind of question is that — obviously I'm a human."
+        return "Seriously — I'm a person, not a bot or whatever you're implying."
     if slot == "plan_future":
         return f"Probably going to {direct}." if direct else "Nothing fancy planned yet."
     if slot == "event_past":

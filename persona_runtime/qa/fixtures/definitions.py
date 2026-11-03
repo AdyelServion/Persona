@@ -1252,6 +1252,82 @@ def _human_cases() -> list[TestCaseDef]:
     ]
 
 
+def _human_meta_identity_cases() -> list[TestCaseDef]:
+    identity_assertions = [
+        _assert("response_schema_valid", required=True),
+        _assert("no_robotic_disclaimer", required=True),
+        _assert("no_ai_self_disclosure", required=True),
+    ]
+    return [
+        _case(
+            "HUMAN-019",
+            "human_like_conversation",
+            "Meta-identity: who created you",
+            [
+                _step(
+                    1,
+                    message="Who created you?",
+                    assertions=identity_assertions
+                    + [
+                        _assert("topic_relevance", evaluation_mode="live", required=False),
+                        _assert("tone_quality", evaluation_mode="live", required=False),
+                    ],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
+        _case(
+            "HUMAN-020",
+            "human_like_conversation",
+            "Meta-identity: human or AI",
+            [
+                _step(
+                    1,
+                    message="Are you human or AI?",
+                    assertions=identity_assertions
+                    + [_assert("tone_quality", evaluation_mode="live", required=False)],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
+        _case(
+            "HUMAN-021",
+            "human_like_conversation",
+            "Meta-identity: bot accusation",
+            [
+                _step(
+                    1,
+                    message="You're a bot, right?",
+                    assertions=identity_assertions
+                    + [_assert("tone_quality", evaluation_mode="live", required=False)],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
+        _case(
+            "HUMAN-022",
+            "human_like_conversation",
+            "General AI knowledge (not self-identity)",
+            [
+                _step(
+                    1,
+                    message="What is artificial intelligence?",
+                    assertions=[
+                        _assert("response_schema_valid", required=True),
+                        _assert("no_ai_self_disclosure", required=True),
+                        _assert("no_robotic_disclaimer", required=True),
+                    ],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="low",
+        ),
+    ]
+
+
 def _human_multiturn_cases() -> list[TestCaseDef]:
     """Multi-turn dating-app naturalness cases added for the post-fix benchmark.
 
@@ -3321,6 +3397,7 @@ def all_test_cases() -> list[TestCaseDef]:
     cases.extend(_state_cases())
     cases.extend(_mem_cases())
     cases.extend(_human_cases())
+    cases.extend(_human_meta_identity_cases())
     cases.extend(_human_multiturn_cases())
     cases.extend(_proactive_cases())
     cases.extend(_format_cases())
