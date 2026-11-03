@@ -23,6 +23,8 @@ services:
         value: http://127.0.0.1:8001
       - key: FASTAPI_PORT
         value: "8001"
+      - key: FASTAPI_STARTUP_TIMEOUT
+        value: "300"
       - key: DB_NAME
         value: Sarah
       - key: OPENAI_MODEL

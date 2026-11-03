@@ -35,8 +35,9 @@ _scheduler: ResponseScheduler | None = None
 def get_runtime() -> PersonaRuntime:
     global _runtime
     if _runtime is None:
-        ensure_indexes(get_db(settings))
-        _runtime = PersonaRuntime(settings)
+        db = get_db(settings)
+        ensure_indexes(db)
+        _runtime = PersonaRuntime(settings, db=db)
     return _runtime
 
 
