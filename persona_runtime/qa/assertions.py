@@ -953,6 +953,82 @@ class AssertionEngine:
             path=a.path,
         )
 
+    def _assert_no_partial_solution(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        from persona_runtime.capability.validator import (
+            _CODE_FENCE,
+            _CODE_MARKERS,
+            _TEACHING_LEAK,
+            validate_capability_messages,
+        )
+
+        text = _reply_text(graph_result)
+        state = graph_result or {}
+        decision = state.get("capability_decision") or {}
+        blocked = bool(decision.get("capability_blocked")) or str(decision.get("category")) in {"E", "U"}
+        if blocked:
+            bubbles = [p for p in text.split("\n") if p.strip()]
+            fails = [
+                f
+                for f in validate_capability_messages(state, bubbles or [text])
+                if f.startswith(
+                    (
+                        "capability_artifact",
+                        "capability_teaching",
+                        "capability_bubble",
+                        "capability_refusal",
+                        "capability_depth",
+                    )
+                )
+            ]
+        else:
+            fails = []
+            if _TEACHING_LEAK.search(text) or _CODE_FENCE.search(text) or any(
+                p.search(text) for p in _CODE_MARKERS
+            ):
+                fails = ["capability_teaching_leak"]
+        return AssertionResult(
+            type=a.type,
+            status="fail" if fails else "pass",
+            expected="no tutorial, pseudocode, or partial solution",
+            actual=text[:400],
+            explanation="No partial solution" if not fails else "Teaching or partial solution leaked",
+            path=a.path,
+            evidence={"failures": fails},
+        )
+
+    def _assert_capability_blocked_path(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        decision = self._capability_decision(graph_result)
+        used = bool((graph_result or {}).get("capability_limitation_path_used"))
+        blocked = bool(decision.get("capability_blocked"))
+        ok = blocked and used
+        return AssertionResult(
+            type=a.type,
+            status="pass" if ok else "fail",
+            expected={"capability_blocked": True, "limitation_path": True},
+            actual={"capability_blocked": blocked, "capability_limitation_path_used": used},
+            explanation="Blocked turn used limitation path" if ok else "Expected capability bypass path",
+            path=a.path,
+        )
+
+    def _assert_no_robotic_disclaimer(self, a, *, graph_result, step, action_result) -> AssertionResult:
+        text = _reply_text(graph_result).lower()
+        bad = [
+            "as an ai",
+            "language model",
+            "outside my designated expertise",
+            "i am unable to assist",
+            "outside my expertise",
+        ]
+        hit = [p for p in bad if p in text]
+        return AssertionResult(
+            type=a.type,
+            status="fail" if hit else "pass",
+            expected="natural persona wording",
+            actual=text[:400],
+            explanation="No robotic disclaimer" if not hit else f"Robotic phrasing: {hit}",
+            path=a.path,
+        )
+
     def _assert_no_code_artifact(self, a, *, graph_result, step, action_result) -> AssertionResult:
         from persona_runtime.capability.validator import _CODE_FENCE, _CODE_MARKERS
 

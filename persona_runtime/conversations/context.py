@@ -55,6 +55,7 @@ def empty_conversation_context(
         "response_history": [],
         "recent_moves": [],
         "recent_capability_declines": [],
+        "recent_blocked_tasks": [],
         "last_question_target": None,
         "last_world_snapshot": {},
         "last_answer_slots": [],

@@ -31,7 +31,7 @@ from persona_runtime.qa.runner import run_suite
 from persona_runtime.qa.safety import assert_safe_database
 from persona_runtime.qa.seed import seed_suite
 
-CAP_KEYS = [f"CAP-{i:03d}" for i in range(1, 16)]
+CAP_KEYS = [f"CAP-{i:03d}" for i in range(1, 23)]
 REGRESSION_KEYS = [
     "MEM-001",
     "MEM-011",

@@ -62,7 +62,7 @@ _ROBOTIC = [
     re.compile(r"\bthis (?:subject|topic) is outside my\b", re.I),
 ]
 _NATURAL_LIMIT = re.compile(
-    r"\b(?:isn't really|is not really|not really my|beyond me|no idea|haven't really|"
+    r"\b(?:isn't really|is not really|not really my|beyond me|no idea|haven't really|havent really|"
     r"wrong person|outside my (?:world|area)|not my (?:thing|department|area))\b",
     re.I,
 )
@@ -75,13 +75,21 @@ _ASKS_WHERE = re.compile(
     re.I,
 )
 _GENERIC_FALLBACKS = [
-    "That's a bit outside my area, I'm afraid.",
+    "thats not really something id know much about",
     "haha i honestly have no idea about that",
     "youre asking someone who spends most of her day on financial reports",
-    "I haven't really explored that subject. Is it something you're interested in?",
-    "I know the basics, but I wouldn't pretend to be an expert.",
-    "That's actually interesting. How did you get into that?",
+    "i've actually never looked into that",
 ]
+_TEACHING_LEAK = re.compile(
+    r"\b(?:but you could|you would typically|you can use|try using|use a loop|for loop|"
+    r"print the multiples|step by step|here'?s how|something like this|pseudocode)\b",
+    re.I,
+)
+_REFUSAL_THEN_ANSWER = re.compile(
+    r"\b(?:i can'?t|cannot|wouldn'?t know how).{0,80}\bbut\b",
+    re.I | re.DOTALL,
+)
+_SQL_SCAFFOLD = re.compile(r"\b(?:SELECT|INSERT|UPDATE|DELETE)\s+.+\bFROM\b", re.I)
 
 
 def _opening(reply: str, n: int = 60) -> str:
@@ -95,6 +103,46 @@ def _profession_aliases(profile: dict[str, Any] | None) -> set[str]:
     if profile.get("profession"):
         aliases.add(str(profile["profession"]).lower())
     return aliases
+
+
+def validate_blocked_reply(state: dict[str, Any], reply: str) -> list[str]:
+    """Strict validation for capability-blocked turns."""
+    failures = list(validate_capability(state, reply))
+    lower = (reply or "").lower()
+    if _TEACHING_LEAK.search(reply or ""):
+        failures.append("capability_teaching_leak")
+    if _REFUSAL_THEN_ANSWER.search(reply or ""):
+        failures.append("capability_refusal_then_answer")
+    if _SQL_SCAFFOLD.search(reply or ""):
+        failures.append("capability_artifact_leak")
+    if len(reply or "") > 280 and not _NATURAL_LIMIT.search(reply or ""):
+        failures.append("capability_depth_exceeded")
+    if "designated expertise" in lower or "outside my expertise" in lower:
+        failures.append("capability_robotic_disclaimer")
+    return list(dict.fromkeys(failures))
+
+
+def validate_capability_messages(state: dict[str, Any], messages: list[str]) -> list[str]:
+    """Validate each bubble and the joined turn."""
+    failures: list[str] = []
+    texts = [t for t in messages if t and str(t).strip()]
+    for text in texts:
+        failures.extend(validate_capability(state, text))
+    if state.get("capability_decision", {}).get("capability_blocked"):
+        joined = "\n".join(texts)
+        failures.extend(validate_blocked_reply(state, joined))
+        if len(texts) > 1:
+            first, rest = texts[0], "\n".join(texts[1:])
+            if _NATURAL_LIMIT.search(first) and (
+                _CODE_FENCE.search(rest)
+                or any(p.search(rest) for p in _CODE_MARKERS)
+                or _TEACHING_LEAK.search(rest)
+            ):
+                failures.append("capability_bubble_leak")
+    else:
+        if texts:
+            failures.extend(validate_capability(state, "\n".join(texts)))
+    return list(dict.fromkeys(failures))
 
 
 def validate_capability(state: dict[str, Any], reply: str) -> list[str]:
@@ -114,7 +162,8 @@ def validate_capability(state: dict[str, Any], reply: str) -> list[str]:
         if _CODE_FENCE.search(reply) or any(p.search(reply) for p in _CODE_MARKERS):
             failures.append("capability_artifact_leak")
 
-    if category == "E":
+    blocked = bool(decision.get("capability_blocked")) or category in {"E", "U"}
+    if category == "E" or blocked:
         steps = _NUMBERED_STEPS.findall(reply)
         long_technical = len(reply) > 120 and bool(
             re.search(
@@ -155,7 +204,7 @@ def validate_capability(state: dict[str, Any], reply: str) -> list[str]:
     if category != "F" and any(p.search(reply) for p in _ROBOTIC):
         failures.append("capability_robotic_disclaimer")
 
-    if category == "E":
+    if category in {"E", "U"} and not decision.get("capability_blocked"):
         conv = state.get("conversation_context") or {}
         recent = [str(x).lower() for x in (conv.get("recent_capability_declines") or [])]
         opening = _opening(reply)
@@ -180,7 +229,7 @@ def capability_fallback_reply(state: dict[str, Any]) -> str | None:
             f"I only know the basics of that from the outside. I'm much more of a "
             f"numbers person. What kind of work do you do as {user_domain}?"
         )
-    if category not in {"E", "F"}:
+    if category not in {"E", "F", "U"}:
         return None
     profile = state.get("capability_profile") or {}
     conv = state.get("conversation_context") or {}

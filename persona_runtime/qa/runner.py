@@ -251,6 +251,9 @@ class ScenarioRunner:
             "action_result": action_result,
             "conversation_id": env.conversation_id,
             "capability_decision": (graph_result or {}).get("capability_decision") or {},
+            "capability_limitation_path_used": bool(
+                (graph_result or {}).get("capability_limitation_path_used")
+            ),
         }
 
     def _send_user_message(self, env: QAEnvironment, content: str) -> dict[str, Any]:
@@ -309,6 +312,7 @@ class ScenarioRunner:
             if not isinstance(profile, dict):
                 raise ValueError("set_capability_profile needs preset or profile")
             env.set_capability_profile(profile)
+            env.rebuild_runtime()
             return {"ok": True, "preset": preset or "custom"}
         if action == "correct_canonical_fact":
             env.correct_canonical_fact(params["fact_id"], params["object"])

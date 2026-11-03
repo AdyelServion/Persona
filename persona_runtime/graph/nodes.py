@@ -866,9 +866,31 @@ def _attach_engagement(plan: dict[str, Any], state: PersonaGraphState) -> dict[s
     return plan
 
 
+def _blocked_response_plan(state: PersonaGraphState) -> dict[str, Any]:
+    plan = {
+        "should_respond": True,
+        "should_answer_directly": False,
+        "should_ask_question": False,
+        "capability_blocked": True,
+        "talking_points": ["natural limitation only"],
+        "length": "short",
+        "response_length": "short",
+    }
+    selected = select_persona_context({**state, "response_plan": plan})
+    return {
+        "response_plan": plan,
+        "disclose_fact_ids": [],
+        "suppressed_fact_ids": [],
+        "selected_context": selected,
+    }
+
+
 def response_plan(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("skip_response"):
         return {"response_plan": {}}
+
+    if (state.get("capability_decision") or {}).get("capability_blocked"):
+        return _blocked_response_plan(state)
 
     understanding = state.get("understanding") or {}
     behaviour = state.get("behaviour_plan") or {}
@@ -1421,6 +1443,12 @@ def generate_response(state: PersonaGraphState, svc: GraphServices) -> dict[str,
     if state.get("skip_response"):
         return {"generated_response": "", "generated_messages": []}
 
+    cap_dec = state.get("capability_decision") or {}
+    if cap_dec.get("capability_blocked"):
+        from persona_runtime.capability.limitation import emit_limitation_response
+
+        return emit_limitation_response(state)
+
     # Deterministic busy acknowledgement — keeps schedule honest without inventing activity
     if state.get("busy_ack") or (state.get("response_plan") or {}).get("busy_ack"):
         current = (state.get("persona_state") or {}).get("current_state") or {}
@@ -1492,6 +1520,8 @@ def _cap_proactive_bubbles(texts: list[str], state: PersonaGraphState) -> list[s
 
 def recall_claim_check(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("skip_response"):
+        return {}
+    if (state.get("capability_decision") or {}).get("capability_blocked"):
         return {}
     reply = state.get("generated_response") or ""
     allowed = list(state.get("allowed_evidence_ids") or [])
@@ -1565,6 +1595,8 @@ def _fallback_messages_update(state: PersonaGraphState) -> dict[str, Any]:
 def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[str, Any]:
     if state.get("skip_response"):
         return {}
+    cap_dec = state.get("capability_decision") or {}
+    blocked = bool(cap_dec.get("capability_blocked"))
     reply = state.get("generated_response") or ""
     style = state.get("typing_style") or {}
     stripped: dict[str, Any] | None = None
@@ -1596,6 +1628,8 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
             "validation_feedback": [],
             "generated_messages": (stripped or {}).get("generated_messages") or msgs,
         }
+        if state.get("capability_limitation_path_used"):
+            payload["capability_limitation_path_used"] = True
         if stripped is not None:
             payload["generated_response"] = reply
         return payload
@@ -1608,12 +1642,39 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
         attempt=attempts,
     )
 
+    if blocked:
+        from persona_runtime.capability.limitation import pick_limitation_line
+
+        line = pick_limitation_line(state) or "thats not really something id know much about"
+        packed = _emit(state, [line])
+        log_event(
+            logger,
+            "capability_violation",
+            request_id=state.get("request_id"),
+            persona_id=state.get("persona_id"),
+            conversation_id=state.get("conversation_id"),
+            failures=result.failures,
+            category=cap_dec.get("category"),
+        )
+        return {
+            **packed,
+            "validation": {"ok": True, "failures": result.failures, "repaired": "capability_template"},
+            "validation_feedback": result.failures,
+            "validation_attempts": attempts + 1,
+            "capability_limitation_path_used": True,
+        }
+
     if attempts >= 1:
         packed = _fallback_messages_update(state)
         fallback = packed["generated_response"]
         retry = validate_response(state, fallback)
         if not retry.ok:
-            packed = _emit(state, ["yeah sounds good"])
+            if blocked:
+                from persona_runtime.capability.limitation import pick_limitation_line
+
+                packed = _emit(state, [pick_limitation_line(state) or "thats not really something id know much about"])
+            else:
+                packed = _emit(state, ["yeah sounds good"])
         return {
             **packed,
             "validation": {"ok": True, "failures": result.failures, "repaired": "fallback"},
@@ -1623,6 +1684,8 @@ def validate_and_repair(state: PersonaGraphState, svc: GraphServices) -> dict[st
 
     # One structured repair
     try:
+        if blocked:
+            raise RuntimeError("capability_blocked_no_repair")
         prompt = _prompt(svc, "response_repair")
         repaired_texts = svc.llm.complete_as_messages(
             system=prompt["system_prompt_template"],
@@ -1928,12 +1991,21 @@ def update_conversation_context(state: PersonaGraphState, svc: GraphServices) ->
         "recent_moves": recent_moves,
     }
     cap_dec = state.get("capability_decision") or {}
-    if cap_dec.get("category") == "E" and reply:
+    if cap_dec.get("category") in {"E", "U"} and reply:
         opening = reply.strip().split("\n")[0].strip()[:80]
         prev = list(conv.get("recent_capability_declines") or [])
         if opening:
             prev.append(opening)
         updates["recent_capability_declines"] = prev[-5:]
+        blocked_prev = list(conv.get("recent_blocked_tasks") or [])
+        blocked_prev.append(
+            {
+                "domain": cap_dec.get("matched_domain") or cap_dec.get("domain"),
+                "request_type": cap_dec.get("request_type"),
+                "category": cap_dec.get("category"),
+            }
+        )
+        updates["recent_blocked_tasks"] = blocked_prev[-8:]
     if topic_updates.get("proactive_opt_out"):
         updates["proactive_opt_out"] = True
         if svc.proactive_settings_repo is not None:

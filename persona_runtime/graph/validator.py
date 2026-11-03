@@ -9,6 +9,7 @@ from persona_runtime.capability.validator import (
     capability_fallback_reply,
     occupation_claim_failure,
     validate_capability,
+    validate_capability_messages,
 )
 from persona_runtime.graph.bubbles import contains_emoji
 from persona_runtime.graph.evidence import reply_has_recall_language
@@ -484,7 +485,12 @@ def validate_response(state: dict[str, Any], reply: str) -> ValidationResult:
                     failures.append(f"stale_experience_as_now:{core[:40]}")
                     break
 
-    failures.extend(validate_capability(state, reply))
+    decision = state.get("capability_decision") or {}
+    if decision.get("capability_blocked"):
+        bubbles = [p for p in (reply or "").split("\n") if p.strip()]
+        failures.extend(validate_capability_messages(state, bubbles or [reply]))
+    else:
+        failures.extend(validate_capability(state, reply))
 
     style = state.get("typing_style") or {}
     if style.get("emoji_enabled") is False and contains_emoji(reply):

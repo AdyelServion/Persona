@@ -235,6 +235,7 @@ class PersonaRuntime:
             "social_context": [],
             "capability_profile": None,
             "capability_decision": {},
+            "capability_limitation_path_used": False,
             "typing_style": None,
         }
         log_event(

@@ -72,4 +72,5 @@ class PersonaGraphState(TypedDict, total=False):
     # Knowledge / capability guardrails
     capability_profile: dict[str, Any] | None
     capability_decision: dict[str, Any]
+    capability_limitation_path_used: bool
     typing_style: dict[str, Any] | None

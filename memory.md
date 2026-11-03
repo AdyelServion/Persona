@@ -236,6 +236,42 @@ Regression coverage is in `tests/test_answer_grounding.py` (compound slots, home
 
 ---
 
+# Strict persona capability enforcement
+
+## Status
+
+Implemented 2026-11-03. Sarah (and other personas) no longer use the main answer LLM for **outside-domain** or **uncertain** specialist requests.
+
+## Architecture
+
+```text
+User message → capability_assessment (classify + decide)
+  → capability_blocked?
+       yes → emit_limitation_response (templates only)
+       no  → response_plan + generate_response
+  → validate_capability_messages → persist
+```
+
+- **Profiles:** Mongo Identity `doc_type: capability_profile` — domains, `restricted_domains`, `limitation_templates`, flags (`general_assistant_mode`, `uncertain_domain_behavior`). Seed: [persona_runtime/capability/seed.py](persona_runtime/capability/seed.py). Missing profile → [minimal_capability_profile()](persona_runtime/capability/profile.py) (restrictive default).
+- **Decision:** [persona_runtime/capability/policy.py](persona_runtime/capability/policy.py) — categories A–F + **U** (uncertain), `category_name` (`OUTSIDE_DOMAIN`, etc.), `capability_blocked`, jailbreak / `recent_blocked_tasks` continuity.
+- **Bypass:** [persona_runtime/capability/limitation.py](persona_runtime/capability/limitation.py) + early return in [generate_response](persona_runtime/graph/nodes.py).
+- **Validation:** [persona_runtime/capability/validator.py](persona_runtime/capability/validator.py) — artifacts, teaching leak, refusal-then-answer, per-bubble checks.
+
+Sarah: programming removed from answerable general domains; listed under `restricted_domains` (includes “what is Python?”, loops, code, SQL, etc.).
+
+## Tests
+
+- `tests/test_capability.py` — 27 offline tests (policy, limitation path, jailbreak).
+- QA fixtures CAP-001–022 including enforcement/adversarial (CAP-016–022).
+- Reports: [persona_capability_enforcement_qa_report.md](persona_capability_enforcement_qa_report.md), [persona_capability_enforcement_issues.md](persona_capability_enforcement_issues.md).
+
+## Known limitations
+
+- Live OpenAI leakage suite not re-run in this pass; use `scripts/qa_capability_track.py` with live LLM for release sign-off.
+- Deterministic QA stub still weak on core-domain answer text and engineer code generation (CAP-013 step 3).
+
+---
+
 # Typing style
 
 ## Status

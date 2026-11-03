@@ -56,7 +56,8 @@ def test_seed_loads_all_expected_keys(seeded_db):
     assert "PERSIST-010" in keys
     assert "CAP-001" in keys
     assert "CAP-015" in keys
-    assert len(keys) >= 150
+    assert "CAP-022" in keys
+    assert len(keys) >= 157
 
 
 def test_write_json_fixtures(tmp_path):

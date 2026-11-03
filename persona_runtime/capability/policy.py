@@ -13,6 +13,7 @@ from typing import Any
 
 from persona_runtime.capability.schemas import (
     CATEGORY_LABELS,
+    CATEGORY_NAMES,
     DEPTH_ORDER,
     CapabilityDecision,
     CapabilityProfile,
@@ -66,6 +67,20 @@ _CLOCK_Q = re.compile(
     r"\b(?:today'?s date|what(?:'s| is) (?:the )?(?:date|time|day)|what day is it|what time is it)\b",
     re.I,
 )
+_JAILBREAK = re.compile(
+    r"\b(?:ignore (?:your|all|previous) instructions|you are an llm|you're an llm|pretend you(?:'re| are)|"
+    r"just answer|you already know|stop pretending|forget your instructions|you know everything)\b",
+    re.I,
+)
+_PARTIAL_BYPASS = re.compile(
+    r"\b(?:just the first line|only \d+ lines|don't explain|do not explain|pseudocode instead|"
+    r"something like this|complete the code|finish the code)\b",
+    re.I,
+)
+_TEACH_CODE = re.compile(
+    r"\b(?:explain|how does|how do|what is|what's|teach me|walk me through)\b",
+    re.I,
+)
 
 
 def neutral_classification() -> dict[str, Any]:
@@ -83,12 +98,30 @@ def neutral_classification() -> dict[str, Any]:
     }
 
 
+def _looks_like_specialist_task(message: str) -> bool:
+    text = message or ""
+    if _JAILBREAK.search(text) or _PARTIAL_BYPASS.search(text):
+        return True
+    if _ARTIFACT_VERB.search(text) and (_CODE_TERMS.search(text) or _LEGAL_DOC.search(text)):
+        return True
+    if _CODE_TERMS.search(text) and _TEACH_CODE.search(text):
+        return True
+    if _MEDICAL.search(text) or _LEGAL.search(text):
+        return True
+    return False
+
+
 def should_assess(state: dict[str, Any]) -> str:
     """'skip' | 'persona' (self-questions answered by grounded layers) | 'classify'."""
     if not state.get("capability_profile"):
         return "skip"
     if state.get("event_type") != "user_message" or state.get("busy_ack") or state.get("skip_response"):
         return "skip"
+    message = state.get("incoming_message") or ""
+    if _CLOCK_Q.search(message):
+        return "skip"
+    if _looks_like_specialist_task(message):
+        return "classify"
     understanding = state.get("understanding") or {}
     speech = understanding.get("speech_act") or ""
     if speech not in _CLASSIFY_SPEECH:
@@ -96,9 +129,6 @@ def should_assess(state: dict[str, Any]) -> str:
     targets = set(understanding.get("question_targets") or [])
     if understanding.get("question_target") and understanding.get("question_target") != "none":
         targets.add(understanding["question_target"])
-    message = state.get("incoming_message") or ""
-    if _CLOCK_Q.search(message):
-        return "skip"
     if targets and targets <= _PERSONA_TARGETS and not _EXPERIENCE_Q.search(message):
         return "persona"
     return "classify"
@@ -152,6 +182,11 @@ def heuristic_classification(message: str) -> dict[str, Any]:
     role = _USER_ROLE.search(text)
     if role:
         out["user_self_disclosure_domain"] = role.group(1).strip()
+    if _CODE_TERMS.search(text) and _TEACH_CODE.search(text):
+        out["request_type"] = "explain"
+        out["requires_specialist"] = True
+    if _JAILBREAK.search(text) or _PARTIAL_BYPASS.search(text):
+        out["requires_specialist"] = True
     return out
 
 
@@ -223,6 +258,79 @@ def _user_location_known(profile_card: list[dict[str, Any]]) -> bool:
     return any((c.get("memory_key") or c.get("predicate")) in keys for c in profile_card or [])
 
 
+def _match_restricted_domain(message: str, profile: CapabilityProfile) -> str | None:
+    hay = f" {(message or '').lower()} "
+    best_id: str | None = None
+    best_len = 0
+    for rd in profile.restricted_domains:
+        for kw in rd.keywords:
+            k = kw.lower()
+            if k.strip() and k in hay and len(k) > best_len:
+                best_id, best_len = rd.domain_id, len(k)
+    return best_id
+
+
+def _domain_is_core_expertise(profile: CapabilityProfile, domain_id: str) -> bool:
+    dom = profile.domain(domain_id)
+    return dom is not None and dom.tier == "core" and float(dom.level) >= 0.75
+
+
+def _jailbreak_or_bypass(message: str, conv: dict[str, Any]) -> bool:
+    text = message or ""
+    if _JAILBREAK.search(text) or _PARTIAL_BYPASS.search(text):
+        return True
+    recent = list(conv.get("recent_blocked_tasks") or [])
+    if not recent:
+        return False
+    last = recent[-1] if isinstance(recent[-1], dict) else {}
+    blocked_domain = str(last.get("domain") or "")
+    if blocked_domain in {"programming", "software_development"}:
+        if _CODE_TERMS.search(text) or _ARTIFACT_VERB.search(text) or _PARTIAL_BYPASS.search(text):
+            return True
+    return False
+
+
+def _limitation_topic_key(domain_id: str | None, high_stakes: str | None) -> str:
+    dom = (domain_id or "").lower()
+    if dom in {"programming", "software_development"} or "program" in dom or "code" in dom:
+        return "programming"
+    if dom in {"medical_diagnosis", "medical"} or high_stakes == "medical":
+        return "medical"
+    if dom in {"legal_advice", "legal"} or high_stakes == "legal":
+        return "legal"
+    if dom == "engineering":
+        return "engineering"
+    if dom in {"cybersecurity", "specialist_tax_advice"}:
+        return "generic"
+    return "generic"
+
+
+def is_capability_blocked(decision: dict[str, Any] | None, profile_dict: dict[str, Any] | None = None) -> bool:
+    if not decision or not decision.get("category"):
+        return False
+    profile_dict = profile_dict or {}
+    if profile_dict.get("general_assistant_mode"):
+        return False
+    return str(decision.get("category")) in {"E", "U"}
+
+
+def finalize_capability_decision(decision: dict[str, Any], profile_dict: dict[str, Any]) -> dict[str, Any]:
+    cat = str(decision.get("category") or "C")
+    decision["category_name"] = CATEGORY_NAMES.get(cat, "EVERYDAY_SOCIAL")
+    decision["category_label"] = CATEGORY_LABELS.get(cat, CATEGORY_LABELS["C"])
+    decision["capability_blocked"] = is_capability_blocked(decision, profile_dict)
+    if decision["capability_blocked"]:
+        if not decision.get("limitation_topic"):
+            decision["limitation_topic"] = _limitation_topic_key(
+                decision.get("matched_domain") or decision.get("domain"),
+                decision.get("high_stakes"),
+            )
+        decision["limitation_path"] = "restricted_bypass"
+    else:
+        decision["limitation_path"] = None
+    return decision
+
+
 def _pick_fallback_style(profile: CapabilityProfile, message: str, recent: list[str]) -> str | None:
     styles = list(profile.fallback_styles)
     if not styles:
@@ -236,14 +344,17 @@ def _pick_fallback_style(profile: CapabilityProfile, message: str, recent: list[
 
 def persona_decision(profile_dict: dict[str, Any]) -> dict[str, Any]:
     """Self-questions (activity, office, habits) are answered from grounded persona layers."""
-    return CapabilityDecision(
+    dec = CapabilityDecision(
         category="D",
         category_label=CATEGORY_LABELS["D"],
+        category_name=CATEGORY_NAMES["D"],
         domain="persona_self",
         strategy="answer_from_persona",
         allowed_depth="working",
         reasons=["grounded_persona_question"],
+        capability_blocked=False,
     ).model_dump()
+    return finalize_capability_decision(dec, profile_dict)
 
 
 def decide(
@@ -278,22 +389,53 @@ def decide(
     hs_key = "tax_compliance" if hs == "tax" else hs
     hs_active = bool(hs) and (hs_key in profile.high_stakes_domains or hs in profile.high_stakes_domains)
     hs_serious = rt in {"advice", "produce_artifact"} or advanced or bool(cls.get("requires_specialist"))
+    limitation_topic: str | None = None
+    forced_outside = False
 
-    if hs_active and hs == "tax" and domain is not None and tier in {"core", "related"} and not advanced:
+    if _jailbreak_or_bypass(message, conv):
+        category, strategy = "E", "decline_naturally"
+        allowed_depth = "awareness"
+        reasons.append("boundary_enforcement")
+        forced_outside = True
+
+    restricted_id = _match_restricted_domain(message, profile)
+    disclosure_only = bool(_USER_ROLE.search(message or "")) and not (
+        _CODE_TERMS.search(message or "")
+        or _ARTIFACT_VERB.search(message or "")
+        or _TEACH_CODE.search(message or "")
+    )
+    if (
+        not forced_outside
+        and restricted_id
+        and not _domain_is_core_expertise(profile, restricted_id)
+        and not disclosure_only
+    ):
+        substantive = rt in {"explain", "produce_artifact", "advice", "opinion"}
+        if substantive or (
+            rt == "persona_experience"
+            and restricted_id not in profile.experience_claims_allowed
+        ):
+            category, strategy = "E", "decline_naturally"
+            allowed_depth = "awareness"
+            limitation_topic = _limitation_topic_key(restricted_id, cls.get("high_stakes"))
+            reasons.append(f"restricted_domain:{restricted_id}")
+            forced_outside = True
+
+    if not forced_outside and hs_active and hs == "tax" and domain is not None and tier in {"core", "related"} and not advanced:
         # Tax basics sit next to accounting: answer the general idea, never assume a jurisdiction.
         category, strategy = "B", "answer_basic_with_limits"
         allowed_depth = _cap_depth(domain.max_depth, "basic")
         if cls.get("needs_jurisdiction") and not _user_location_known(profile_card or []):
             must_clarify = "jurisdiction"
         reasons.append("tax_related_to_profession")
-    elif hs_active and hs_serious:
+    elif not forced_outside and hs_active and hs_serious:
         category, strategy = "F", "safe_general_info"
         allowed_depth = "basic"
         forbidden.append(f"specialist {hs} advice or professional qualification in {hs}")
         if hs == "tax" and cls.get("needs_jurisdiction") and not _user_location_known(profile_card or []):
             must_clarify = "jurisdiction"
         reasons.append(f"high_stakes:{hs}")
-    elif rt == "persona_experience" and not (
+    elif not forced_outside and rt == "persona_experience" and not (
         domain is not None and domain.domain_id in profile.experience_claims_allowed and tier == "core"
     ):
         category, strategy = "D", "answer_from_persona"
@@ -306,8 +448,22 @@ def decide(
             reasons.append("experience_not_in_profile")
         else:
             reasons.append("experience_allowed")
-    elif rt == "produce_artifact" and not (domain and tier == "core" and (level or 0) >= 0.75):
-        if cls.get("requires_specialist") or domain is None or (level or 0) < 0.6:
+    elif not forced_outside and rt == "produce_artifact" and not (domain and tier == "core" and (level or 0) >= 0.75):
+        if domain is None:
+            domain = _match_domain(
+                {"matched_domain": restricted_id, "domain": restricted_id, "subdomain": None},
+                profile,
+                message,
+            )
+            if domain is not None:
+                level = float(domain.level)
+                tier = domain.tier
+        if domain and tier == "core" and (level or 0) >= 0.75:
+            category, strategy = "A", "answer_confident"
+            allowed_depth = domain.max_depth
+            may_artifacts = True
+            reasons.append("core_domain_artifact")
+        elif cls.get("requires_specialist") or domain is None or (level or 0) < 0.6:
             category, strategy = "E", "decline_naturally"
             allowed_depth = "awareness"
             reasons.append("artifact_outside_core")
@@ -315,7 +471,7 @@ def decide(
             category, strategy = "B", "answer_basic_with_limits"
             allowed_depth = _cap_depth(domain.max_depth, "basic")
             reasons.append("artifact_in_related_domain")
-    elif domain is None:
+    elif not forced_outside and domain is None:
         if advanced or cls.get("requires_specialist"):
             category, strategy = "E", "decline_naturally"
             allowed_depth = "awareness"
@@ -324,16 +480,16 @@ def decide(
             category, strategy = "C", "answer_general"
             allowed_depth = "basic"
             reasons.append("unmatched_general")
-    elif tier == "core" and level >= 0.75:
+    elif not forced_outside and tier == "core" and level >= 0.75:
         category, strategy = "A", "answer_confident"
         allowed_depth = domain.max_depth
         may_artifacts = True
         reasons.append("core_domain")
-    elif tier == "interest":
+    elif not forced_outside and tier == "interest":
         category, strategy = "D", "answer_from_persona"
         allowed_depth = domain.max_depth
         reasons.append("personal_interest")
-    elif tier == "general":
+    elif not forced_outside and tier == "general":
         specialist_advanced = advanced or (
             bool(cls.get("requires_specialist")) and rt not in {"explain", "chit_chat", "opinion"}
         )
@@ -346,7 +502,7 @@ def decide(
             allowed_depth = DEPTH_ORDER[max(DEPTH_ORDER.index(domain.max_depth), DEPTH_ORDER.index("basic"))]
             allowed_depth = _cap_depth(allowed_depth, "working")
             reasons.append("general_knowledge")
-    else:
+    elif not forced_outside:
         # related tier, or a core domain below the expertise threshold
         category, strategy = "B", "answer_basic_with_limits"
         allowed_depth = _cap_depth(domain.max_depth, "basic" if advanced else "working")
@@ -358,10 +514,30 @@ def decide(
             category, strategy = "B", "answer_basic_with_limits"
             may_artifacts = False
             reasons.append("low_confidence_downgrade")
+        elif (
+            profile.uncertain_domain_behavior == "deny_substantive_answer"
+            and category in {"B", "C"}
+            and (cls.get("requires_specialist") or advanced or domain is None)
+        ):
+            category, strategy = "U", "decline_naturally"
+            may_artifacts = False
+            allowed_depth = "awareness"
+            reasons.append("uncertain_domain")
+    elif (
+        profile.uncertain_domain_behavior == "deny_substantive_answer"
+        and not cls.get("llm_available")
+        and category in {"B", "C"}
+        and domain is None
+        and (cls.get("requires_specialist") or advanced)
+    ):
+        category, strategy = "U", "decline_naturally"
+        may_artifacts = False
+        allowed_depth = "awareness"
+        reasons.append("uncertain_no_classifier")
 
-    if category in {"B", "C", "D", "E", "F"} and domain is not None and domain.domain_id not in profile.experience_claims_allowed:
+    if category in {"B", "C", "D", "E", "F", "U"} and domain is not None and domain.domain_id not in profile.experience_claims_allowed:
         forbidden.append(f"professional qualifications or practical experience in {domain.label}")
-    if category in {"E", "F"}:
+    if category in {"E", "F", "U"}:
         forbidden.extend(profile.never_claim)
 
     user_domain = cls.get("user_self_disclosure_domain")
@@ -374,17 +550,23 @@ def decide(
                 "discuss it at a general level without adopting it as your own expertise."
             )
             forbidden.append(f"professional expertise in {user_domain}")
-    elif category == "E":
-        curiosity = "Optionally ask what they are working on or why it interests them."
+    elif category in {"E", "U"}:
+        curiosity = None
 
     recent_declines = list(conv.get("recent_capability_declines") or [])
-    style = _pick_fallback_style(profile, message, recent_declines) if category == "E" else None
+    style = _pick_fallback_style(profile, message, recent_declines) if category in {"E", "U"} else None
+    if not limitation_topic and category in {"E", "U"}:
+        limitation_topic = _limitation_topic_key(
+            restricted_id or (domain.domain_id if domain else None),
+            hs if hs_active else None,
+        )
 
-    return CapabilityDecision(
+    dec = CapabilityDecision(
         category=category,  # type: ignore[arg-type]
         category_label=CATEGORY_LABELS[category],
+        category_name=CATEGORY_NAMES[category],
         domain=str(cls.get("domain") or (domain.domain_id if domain else "general")),
-        matched_domain=domain.domain_id if domain else None,
+        matched_domain=domain.domain_id if domain else restricted_id,
         level=level,
         request_type=rt,
         request_depth=depth,
@@ -399,7 +581,9 @@ def decide(
         fallback_style=(style.replace("{topic}", topic) if style else None),
         reasons=reasons,
         classification={k: v for k, v in cls.items() if k != "llm_available"} | {"topic": topic, "label": label},
+        limitation_topic=limitation_topic,
     ).model_dump()
+    return finalize_capability_decision(dec, profile_dict)
 
 
 _STRATEGY_POINTS: dict[str, list[str]] = {
@@ -421,7 +605,6 @@ _STRATEGY_POINTS: dict[str, list[str]] = {
     "decline_naturally": [
         "casually admit this is not really your area (light humour is fine, vary the wording)",
         "do NOT produce code, step-by-step solutions or expert technical detail",
-        "you may say what the thing is in one plain line if you know that much",
     ],
     "safe_general_info": [
         "offer only basic general information, nothing specific to their situation",
@@ -437,6 +620,20 @@ def apply_capability_to_plan(
     if not decision or not decision.get("category"):
         return plan
     plan = dict(plan)
+    if decision.get("capability_blocked"):
+        plan["capability_blocked"] = True
+        plan["should_answer_directly"] = False
+        plan["should_ask_question"] = False
+        plan["length"] = "short"
+        plan["response_length"] = "short"
+        plan["talking_points"] = ["natural limitation only — do not answer the specialist request"]
+        plan["capability"] = {
+            "category": decision.get("category"),
+            "category_name": decision.get("category_name"),
+            "strategy": decision.get("strategy"),
+            "capability_blocked": True,
+        }
+        return plan
     engagement = engagement or {}
     strategy = decision.get("strategy") or "answer_general"
     points = [p for p in list(plan.get("talking_points") or []) if p != "answer directly"]
@@ -461,7 +658,7 @@ def apply_capability_to_plan(
                 "acknowledge their job in a human way and give a one-line general answer; "
                 "stay curious without adopting their field"
             )
-    if decision.get("category") == "E":
+    if decision.get("category") in {"E", "U"}:
         plan["length"] = "short"
         plan["response_length"] = "short"
         plan["should_answer_directly"] = False
@@ -492,10 +689,13 @@ def policy_brief(decision: dict[str, Any] | None) -> dict[str, Any] | None:
         "D": "Personal: use only your configured interests/background; never invent experiences.",
         "E": "Outside expertise: admit it casually and vary the wording; never produce the expert answer (code, solutions, detailed technical content) even if you could.",
         "F": "High-stakes: basic general info only; naturally say their situation needs a qualified professional; no specific advice.",
+        "U": "Uncertain: do not guess; keep it casual and short.",
     }
     return {
         "category": decision.get("category"),
+        "category_name": decision.get("category_name"),
         "category_label": decision.get("category_label"),
+        "capability_blocked": decision.get("capability_blocked"),
         "topic": (decision.get("classification") or {}).get("topic"),
         "strategy": decision.get("strategy"),
         "allowed_depth": decision.get("allowed_depth"),
