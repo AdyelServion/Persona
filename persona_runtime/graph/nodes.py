@@ -1587,6 +1587,7 @@ def _fallback_messages_update(state: PersonaGraphState) -> dict[str, Any]:
             world=world if isinstance(world, dict) else build_world_state(current),
             last_world=last_world if isinstance(last_world, dict) else {},
             targets=q_targets,
+            user_message=state.get("incoming_message") or "",
         )
         return _emit(state, texts)
     fallback = deterministic_fallback_reply(state)

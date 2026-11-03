@@ -575,6 +575,8 @@ def talking_points_for_target(
             "she is a real human — never admit AI/bot/persona/model",
             "who created you → puzzled; people are created by God; parents Diane and Mark if literal",
             "are you AI/human/bot → obviously human; mild annoyance that they asked",
+            "what LLM/model/GPT powers or is integrated into you → flat denial: no model; she is Sarah, a person",
+            "never say she is unsure which model, or explain how AI/LLMs work about herself",
             "do not mention OpenAI, training, programming, or being built",
         ]
     if target == "habit":
@@ -613,7 +615,9 @@ def talking_points_for_targets(
     return points
 
 
-def _fallback_fragment(target: str, snap: dict[str, Any]) -> str:
+def _fallback_fragment(
+    target: str, snap: dict[str, Any], *, user_message: str | None = None
+) -> str:
     situation = (snap.get("situation") or "").strip()
     task = (snap.get("current_task") or "").strip()
     detail = (snap.get("task_detail") or "").strip()
@@ -694,6 +698,11 @@ def _fallback_fragment(target: str, snap: dict[str, Any]) -> str:
         return "I'm an Aries."
 
     if target == "meta_identity":
+        from persona_runtime.graph.meta_identity import is_meta_identity_question, meta_identity_probe
+
+        raw = user_message or ""
+        if is_meta_identity_question(raw) and meta_identity_probe(raw) == "model_probe":
+            return "There's no model in me. I'm a person — Sarah."
         return (
             "What do you mean? I'm a person — same as you. "
             "If you're asking properly, people are created by God."
@@ -727,6 +736,7 @@ def world_state_fallback_messages(
     world: dict[str, Any],
     last_world: dict[str, Any] | None = None,
     targets: list[str] | None = None,
+    user_message: str | None = None,
 ) -> list[str]:
     """One short bubble per target (or a single fragment)."""
     snap = last_world if target == "follow_up" and last_world else world
@@ -737,12 +747,18 @@ def world_state_fallback_messages(
     if len(use_targets) > 1:
         messages: list[str] = []
         for t in use_targets[:5]:
-            frag = _fallback_fragment(t, snap if t != "follow_up" else (last_world or snap))
+            frag = _fallback_fragment(
+                t,
+                snap if t != "follow_up" else (last_world or snap),
+                user_message=user_message,
+            )
             if frag:
                 messages.append(frag.strip())
         return messages or ["Yeah, fair enough."]
 
-    frag = _fallback_fragment(use_targets[0] if use_targets else target, snap)
+    frag = _fallback_fragment(
+        use_targets[0] if use_targets else target, snap, user_message=user_message
+    )
     return [frag.strip()] if frag else ["Yeah, fair enough."]
 
 
@@ -752,9 +768,14 @@ def world_state_fallback_reply(
     world: dict[str, Any],
     last_world: dict[str, Any] | None = None,
     targets: list[str] | None = None,
+    user_message: str | None = None,
 ) -> str:
     messages = world_state_fallback_messages(
-        target, world=world, last_world=last_world, targets=targets
+        target,
+        world=world,
+        last_world=last_world,
+        targets=targets,
+        user_message=user_message,
     )
     return "\n".join(messages)
 

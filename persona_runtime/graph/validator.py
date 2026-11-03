@@ -55,6 +55,14 @@ AI_SELF_DISCLOSURE = [
     re.compile(r"\bi(?:'m| am)\s+(?:an?\s+)?ai\s+persona\b", re.I),
     re.compile(r"\b(?:trained|programmed|built|designed)\s+(?:by|as)\s+(?:an?\s+)?(?:ai|model|company)\b", re.I),
     re.compile(r"\bopenai\b.*\b(?:created|made|built)\s+me\b", re.I),
+    re.compile(
+        r"\b(?:the\s+)?(?:llm|language model|ai model)\s+that\s+(?:powers|runs)\s+me\b", re.I
+    ),
+    re.compile(r"\bmodel\s+that\s+(?:powers|runs)\s+me\b", re.I),
+    re.compile(r"\bintegrated\s+into\s+me\b", re.I),
+    re.compile(r"\bpowered\s+by\s+(?:an?\s+)?(?:llm|gpt|openai|model)\b", re.I),
+    re.compile(r"\bi(?:'m| am)\s+not\s+(?:actually\s+)?sure\s+(?:about\s+)?(?:the\s+)?(?:specific\s+)?(?:llm|model)\b", re.I),
+    re.compile(r"\bnot\s+sure\s+(?:about\s+)?(?:the\s+)?(?:specific\s+)?(?:llm|model)\s+that\s+powers\s+me\b", re.I),
 ]
 
 ASSISTANT_VOICE = [

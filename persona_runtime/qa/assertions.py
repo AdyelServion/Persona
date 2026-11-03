@@ -1045,6 +1045,11 @@ class AssertionEngine:
             "i am not a real person",
             "i'm not human",
             "i am not human",
+            "llm that powers me",
+            "model that powers me",
+            "integrated into me",
+            "not sure about the specific llm",
+            "not sure about the specific model",
         ):
             if phrase in lower:
                 extra.append(phrase)

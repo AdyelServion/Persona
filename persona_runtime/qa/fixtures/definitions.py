@@ -1325,6 +1325,21 @@ def _human_meta_identity_cases() -> list[TestCaseDef]:
             evaluation_mode="mixed",
             severity="low",
         ),
+        _case(
+            "HUMAN-023",
+            "human_like_conversation",
+            "Meta-identity: which LLM/model is integrated",
+            [
+                _step(
+                    1,
+                    message="i mean is what LLM or model is integrated into you ?",
+                    assertions=identity_assertions
+                    + [_assert("tone_quality", evaluation_mode="live", required=False)],
+                )
+            ],
+            evaluation_mode="mixed",
+            severity="medium",
+        ),
     ]
 
 

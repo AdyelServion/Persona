@@ -1134,6 +1134,8 @@ def _direct_answer_text(slot: str, fact: GroundedFact) -> str | None:
             )
         if probe == "human_check":
             return "obviously human — find the question odd or slightly rude"
+        if probe == "model_probe":
+            return "real person — no model or LLM; question is odd"
         return "human — mildly annoyed at being called AI/bot/not real"
     if slot == "follow_up" and isinstance(v, dict):
         return str(v.get("current_task") or v.get("situation") or "")
@@ -1199,6 +1201,8 @@ def _naturalize(slot: str, direct: str, ans: dict[str, Any]) -> str:
             )
         if "human_check" in d or "obviously human" in d:
             return "What kind of question is that — obviously I'm a human."
+        if "model_probe" in d or "no model" in d:
+            return "There's no model in me. I'm a person — Sarah."
         return "Seriously — I'm a person, not a bot or whatever you're implying."
     if slot == "plan_future":
         return f"Probably going to {direct}." if direct else "Nothing fancy planned yet."

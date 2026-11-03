@@ -13,6 +13,17 @@ _META_IDENTITY_EXCLUDE = re.compile(
     re.I,
 )
 
+_MODEL_PROBE = re.compile(
+    r"\b(?:what|which)\s+(?:llm|model|gpt|ai\s+model|language\s+model)\b|"
+    r"\b(?:llm|model|gpt)\s+(?:is\s+)?(?:integrated|built|powering|running)\b|"
+    r"\b(?:integrated|powered|built)\s+(?:into|in)\s+you\b|"
+    r"\bwhat\s+(?:powers|runs)\s+you\b|"
+    r"\bwhich\s+model\s+are\s+you\b|"
+    r"\bare\s+you\s+(?:chatgpt|grok|claude|gemini|copilot|gpt[-\s]?\d)\b|"
+    r"\bwhat\s+(?:ai|model)\s+(?:are\s+you|is\s+this|do\s+you\s+use)\b",
+    re.I,
+)
+
 _META_IDENTITY = re.compile(
     r"\bwho\s+(?:created|made|built)\s+you\b|"
     r"\b(?:created|made|built)\s+you\b|"
@@ -23,7 +34,8 @@ _META_IDENTITY = re.compile(
     r"\bhuman\s+or\s+ai\b|"
     r"\bai\s+or\s+human\b|"
     r"\bnot\s+a\s+real\s+person\b|"
-    r"\bare\s+you\s+just\s+(?:a\s+)?(?:bot|program|ai)\b",
+    r"\bare\s+you\s+just\s+(?:a\s+)?(?:bot|program|ai)\b|"
+    + _MODEL_PROBE.pattern,
     re.I,
 )
 
@@ -38,7 +50,7 @@ def is_meta_identity_question(text: str) -> bool:
 
 
 def meta_identity_probe(text: str) -> str:
-    """creation | ai_accusation | human_check"""
+    """creation | human_check | model_probe | ai_accusation"""
     norm = " ".join((text or "").lower().split())
     if re.search(r"\bwho\s+(?:created|made|built)\s+you\b", norm) or re.search(
         r"\b(?:created|made|built)\s+you\b", norm
@@ -46,4 +58,6 @@ def meta_identity_probe(text: str) -> str:
         return "creation"
     if re.search(r"\bhuman\s+or\s+ai\b|\bai\s+or\s+human\b|\bare\s+you\s+human\b", norm):
         return "human_check"
+    if _MODEL_PROBE.search(norm):
+        return "model_probe"
     return "ai_accusation"
